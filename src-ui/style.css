@@ -1,0 +1,23 @@
+/* RESET */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+:target { scroll-margin-block: 5ex; }
+img, picture, video, canvas, svg { display: block; max-width: 100%; height: auto; }
+p, h1, h2, h3 { overflow-wrap: break-word; }
+body { min-height: 100vh; }
+input, button, textarea, select { font: inherit; color: inherit; }
+
+/** CSS **/
+:root {
+  --gap: 14px;
+  --radius: 4px;
+  --text: #FFF;
+  --bg: #1E293B;
+  --accent: #6366f1;
+}
+
+body { background-color: var(--bg); color: var(--text); font: 18px/1.5 sans-serif; }
+body { display: flex; flex-direction: column; gap: var(--gap); align-items: center; justify-content: center; }
+button { background-color: var(--accent); border-radius: var(--radius); border: none; padding: 0.5rem 1.5rem; }
+button:hover { background-color: oklch(from var(--accent) calc(l - 0.05) c h); }
+button:active { background-color: oklch(from var(--accent) calc(l - 0.1) c h); }

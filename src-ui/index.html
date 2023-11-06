@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Latte</title>
+    <link href="style.css" rel="stylesheet">
+    <script type="module">
+      const { invoke } = window.__TAURI__.tauri
+      import { html, render, useState } from '/preact.js' // 'https://esm.sh/htm/preact/standalone'
+
+      var clicks = 0
+
+      function Button(props) {
+        const [value, setValue] = useState(0)
+        let onClick = () => {
+          setValue(value + 1)
+          invoke('click').then((resp) => { clicks = resp; mount() })
+        }
+        return html`<button onClick=${onClick}>
+                      Clicked: ${clicks}, local: ${value}
+                    </button>`;
+      }
+
+      function App () {
+        return html`<h1>Hello World!</h1><${Button} />`
+      }
+
+      function mount() {
+        render(html`<${App} />`, document.body)
+      }
+      
+      mount()
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
