@@ -10,14 +10,32 @@ input, button, textarea, select { font: inherit; color: inherit; }
 /** CSS **/
 :root {
   --gap: 14px;
-  --radius: 4px;
+  --radius: 6px;
   --text: #FFF;
   --bg: #1E293B;
+  --bg-dark: oklch(from var(--bg) calc(l - 0.075) c h);
   --accent: #6366f1;
 }
 
+.noselect { user-select: none; -webkit-user-select: none; cursor: pointer; }
+
+html { overscroll-behavior: none; }
 body { background-color: var(--bg); color: var(--text); font: 18px/1.5 sans-serif; }
-body { display: flex; flex-direction: column; gap: var(--gap); align-items: center; justify-content: center; }
+/*body { display: flex; flex-direction: column; gap: var(--gap); align-items: center; justify-content: center; }*/
 button { background-color: var(--accent); border-radius: var(--radius); border: none; padding: 0.5rem 1.5rem; }
 button:hover { background-color: oklch(from var(--accent) calc(l - 0.05) c h); }
 button:active { background-color: oklch(from var(--accent) calc(l - 0.1) c h); }
+
+.tabbar { display: flex; padding: 1rem 2rem 0; background-color: var(--bg-dark); }
+.tabbar > .tab { padding: 0.5rem 1.25rem; }
+.tabbar > .selected { background-color: var(--bg); border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+
+.panel { padding: 1rem 2rem; }
+
+.setup {
+  display: grid; grid-template-columns: max-content max-content; gap: 0.75rem 1.5rem; align-items: center;
+  & .key { display: inline-block; margin-top: 0.25rem; padding: 0.2rem 0.3rem 0.5rem; background-color: oklch(from var(--bg) calc(l - 0.035) c h); border-radius: calc(var(--radius) + 0.1rem);
+    &.recording { background-color: oklch(from var(--bg) calc(l - 0.035) c 0); }
+    & div { padding: 0.5rem 1.5rem; background-color: rgba(0, 0, 0, 0.3); border-radius: var(--radius); }
+  }
+}

@@ -7,23 +7,31 @@
     <link href="style.css" rel="stylesheet">
     <script type="module">
       const { invoke } = window.__TAURI__.tauri
-      import { html, render, useState } from '/preact.js' // 'https://esm.sh/htm/preact/standalone'
+      import { h, Component, render } from '/libs/preact.mjs'
+      import { useState } from '/libs/hooks.js'
+      import htm from '/libs/htm.mjs'
+      const html = htm.bind(h)
 
-      var clicks = 0
+      import { SetupTab } from "/setup.js"
+      import { MeasureTab } from "/measure.js"
 
-      function Button(props) {
-        const [value, setValue] = useState(0)
-        let onClick = () => {
-          setValue(value + 1)
-          invoke('click').then((resp) => { clicks = resp; mount() })
-        }
-        return html`<button onClick=${onClick}>
-                      Clicked: ${clicks}, local: ${value}
-                    </button>`;
+      function TabBar(props) {
+        return html`<div class='tabbar'>
+                      ${['Setup', 'Measure'].map(tab => 
+                        html`<div onClick=${() => props.setTab(tab)}
+                               class=${'tab noselect' + (props.tab == tab ? ' selected' : '')}>
+                               ${tab}
+                             </div>`
+                      )}
+                    </div>`;
       }
 
       function App () {
-        return html`<h1>Hello World!</h1><${Button} />`
+        const [tab, setTab] = useState('Setup')
+        return html`<div class='app'>
+                      <${TabBar} tab=${tab} setTab=${setTab}/>
+                      ${tab == 'Setup' ? html`<${SetupTab} />` : html`<${MeasureTab} />`}
+                    </div>`;
       }
 
       function mount() {
