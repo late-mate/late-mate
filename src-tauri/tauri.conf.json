@@ -8,7 +8,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "latte",
+    "productName": "late-mate",
     "version": "0.1.0"
   },
   "tauri": {
@@ -59,7 +59,7 @@
         "fullscreen": false,
         "height": 768,
         "resizable": true,
-        "title": "Latte ☕️",
+        "title": "Late Mate",
         "width": 1024
       }
     ]
