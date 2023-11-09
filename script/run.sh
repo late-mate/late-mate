@@ -2,4 +2,4 @@
 set -o errexit -o nounset -o pipefail
 cd "`dirname $0`/.."
 
-yarn tauri dev
+npm run tauri dev

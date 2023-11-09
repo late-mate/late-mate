@@ -30,7 +30,7 @@ button:active { background-color: oklch(from var(--accent) calc(l - 0.1) c h); }
 .tabbar > .tab { padding: 0.5rem 1.25rem; }
 .tabbar > .selected { background-color: var(--bg); border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
 
-.panel { padding: 1rem 2rem; }
+.panel { padding: 2rem 3.25rem; }
 
 .setup {
   display: grid; grid-template-columns: max-content max-content; gap: 0.75rem 1.5rem; align-items: center;
