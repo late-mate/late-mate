@@ -11,24 +11,21 @@
   <body>
     <main>
       <h1>Late Mate</h1>
-      <p>Measure key-to-photon latency of anything. Yourself</p>
+      <p>Measure latency from keypress to the screen</p>
 
       <img width="1200" height="760" src="setup.webp">
 
-      <p>Late Mate is a simple device that helps you measure latency between your keypresses and your monitor.</p>
+      <h2>The latency problem</h2>
 
-      <p>As easy as:</p>
+      <p>We all like it when our computer feels snappy. But what exactly does “snappy” mean? The main factor is latency: the time between pressing a key and observing change on a screen.</p>
+      
+      <p>On a modern device, many factors contribute to latency: USB drivers, OS, compositor, scheduler, application itself, video driver, monitor, and, after all, physics.</p>
 
-      <ol>
-        <li>Plug into USB.</li>
-        <li>Point the sensor at your screen.</li>
-        <li>Click Run.</li>
-        <li>Get your results in a nice-looking graph.</li>
-      </ol>
+      <h2>Our solution</h2>
 
-      <h2>We measure what matters</h2>
-
-      <p>Testing components in isolation is great in theory, but in practice, what really matters is end-to-end latency, from keyboard to the screen. You press the button; how soon do you see a character appear?</p>
+      <p>The first step to a snappy computer is measuring the problem. You can’t improve what you can’t measure.</p>
+      
+      <p>Second is realizing you need an external device to trigger the entire stack: from keypress over USB to the photons on the screen. Can’t be done from within the computer.</p>
 
       <div class="key_to_eye">
         <div class="left"></div>
@@ -36,64 +33,55 @@
         <div class="right"></div>
       </div>
 
-      <p>We measure exactly that! Real numbers that represent what you actually feel and see, with all the internal overhead from OS/keyboard driver/app/screen accounted for (yes, there’s a lot of overhead!).</p>
+      <p>This is exactly what we are building: a physical device that can simulate keypresses, then look at the screen and measure the full key-to-photon latency of your entire stack, with all the factors accounted for.</p>
 
-      <h2>No complicated setup required</h2>
+      <p>Repeat that many times and you’ll have statistics relevant to your particular hardware and your particular software stack. View results as a graph or export to an open format like CSV.</p>
 
-      <p>Late Mate is just a light sensor with a USB cable. It doesn’t get simpler than that. Put it anywhere. Fix it anyhow. Works with any screen and any PC/Mac/laptop that has a USB port.</p>
+      <h2>Who needs this?</h2>
 
-      <!-- <img width="600" height="260" src="usb-c.png"> -->
-      <img width="1200" height="530" src="overview.webp">
+      <p><strong>Software developers</strong>. Are you building an app? Great! Measure how long it takes for your app to react to user input. Automate testing. Compare against competitors. Nimble apps => happy users.</p>
 
-      <p>It’s also pretty easy to transport, in case you want to take this show on the road.</p>
+      <p><strong class=gamer>Gamers</strong>. Lower latency gives you more time to react. But there are so many factors! Borderless or fullscreen? Double or triple buffering? Frame generation? Anti-lag? Game mode? It changes from game to game, too, and from device to device. So figure out reliably which factors contribute to latency and improve your reaction time.</p>
 
-      <h2>Do I need this?</h2>
+      <p><strong>Regular users</strong>. Maybe you just want a fast app for yourself? The most snappy text editor. Or terminal. Or browser. Or messenger. You just like fast animations and quick typing—who doesn’t? Find what works best on your hardware, with your monitor, and on your OS.</p>
 
-      <p>Yes.</p>
+      <p>Remember: you can’t improve what you can’t measure.</p>
 
-      <p><strong>Computer user?</strong> Find for yourself what the fastest text editor (or terminal, or browser, or messenger) is <em>for you</em>. Run tests on your own hardware, not some idealized setup in a lab.</p>
+      <h2>How exactly does Late Mate work?</h2>
 
-      <p><strong class=gamer>Gamer?</strong> Figure out which settings give you the best reaction time. Learn how fast your monitor actually is on your specific hardware. Borderless or fullscreen? Does it even matter? Find it out for the game you are playing!</p>
-
-      <p><strong>Developer building an app?</strong> Measure how long it takes for your app to react to user input. Maybe there’s unnecessary overhead you can get rid of? Your users will be happy. And you can attach nice-looking graphs, too.</p>
-
-      <p>Remember: <em>you can’t improve what you can’t measure</em>.</p>
-
-      <h2>How <em>exactly</em> does it work?</h2>
+      <p>Late Mate pretends to be two things: a virtual keyboard for the PC it’s plugged into, and a light sensor that you put on your monitor.</p>
 
       <ol>
-        <li>Late Mate pretends to be a keyboard, sending a sequence of type-erase events over USB.</li>
-        <li>At the same time, Late Mate high-speed light sensor detects brightness change at the monitor when located over the cursor.</li>
-        <li>Delay between sending keypress event and brightness change is measured and reported back to the computer.</li>
-        <li>Companion application collects that statistics and presents it in a graph form.</li>
-        <li>You can customize which events should be sent, when in the LCD cycle to consider brightness change, frequency of events, etc.</li>
+        <li>When testing starts, Late Mate will send a sequence of HID events over USB, like constantly typing and erasing the letter ‘X’ (customizable).</li>
+        <li>At the same time, Late Mate’s 2000 hz light sensor detects brightness changes under the device.</li>
+        <li>The delay between sending key presses and brightness change is measured on the device and reported to the companion application.</li>
+        <li>The application presents collected data as a latency distribution chart.</li>
       </ol>
 
-      <p>Format/API-wise, Late Mate will ship with:</p>
+      <p>You can customize which events should be sent, how often, how many, adjust for LCD response time, etc.</p>
+
+      <p>We also provide you with raw data in CSV form if you want to analyze it yourself.</p>
+
+      <img width="1200" height="530" src="overview.webp">
+
+      <h2>What’s in the box?</h2>
+
+      <p>Late Mate will ship with:</p>
 
       <ul>
-        <li>GUI application for configuration and measurement,</li>
+        <li>The device itself,</li>
+        <li>GUI application for configuration and running measurements,</li>
         <li>CLI application with stable API for CI/automation,</li>
-        <li>CSV export.</li>
+        <li>A Rust crate to help you interface with Late Mate in your tools.</li>
       </ul>
+  
+      <p>All software we plan to ship will be open source. Firmware will be supported for at least a year and open-sourced after one year in any case.</p>
 
       <h2>When?</h2>
 
-      <p>We are currently finalizing hardware and software design. We expect shipping somewhere in 2024.</p>
+      <p>We are currently finalizing the hardware and software design. We expect shipping to start before Q3 2024.</p>
 
-      <img width="1200" height="460" src="schematic.webp">
-
-      <h2>Who’s behind this?</h2>
-
-      <p><a href="https://tonsky.me/" target="_blank">Nikita Prokopov</a>, Clojure engineer, creator of Fira Code.</p>
-
-      <p><a href="https://dgroshev.com/" target="_blank">Dan Groshev</a>, Python/Rust engineer and hardware enthusiast.</p>
-
-      <p>What unites us is that we are both very susceptible to latency around and very passionate about fast software. Our mission is to make all computers faster—one step at a time.</p>
-
-      <h2>Stay updated</h2>
-
-      <p>Subscribe to our mailing list to get project updates and know when we open pre-orders.</p>
+      <p>Subscribe to get project updates and be notified when pre-orders open:</p>
 
       <form action="https://buttondown.email/api/emails/embed-subscribe/late-mate" method="post" target="popupwindow" onsubmit="window.open('https://buttondown.email/late-mate', 'popupwindow')" class="embeddable-buttondown-form">
         <div>
@@ -102,11 +90,19 @@
         </div>
         <p>No spam. Unsubscribe at any time</p>
       </form>
+
+      <h2>Who’s behind this?</h2>
+
+      <p><a href="https://tonsky.me/" target="_blank">Nikita Prokopov</a>, creator of Fira Code, Grumpy Website, author of Software Disenchantment, and long-term critic of the state of modern computing.</p>
+
+      <p><a href="https://dgroshev.com/" target="_blank">Dan Groshev</a>, ex-CTO of a software+hardware ed-tech startup, branching into Rust and industrial design in his spare time.</p>
+
+      <img width="1200" height="460" src="schematic.webp">
     </main>
 
     <div class=footer>
       <p>&copy; 2023 Nikita Prokopov, Dan Groshev</p>
-      <p>Last update: Nov 19, 2023</p>
+      <p>Last update: Nov 21, 2023</p>
     </div>
 
     <script
