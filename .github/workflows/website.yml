@@ -37,6 +37,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.WEBSITE_S3_BUCKET_MANAGER_ACCESS_KEY_SECRET }}
           aws-region: eu-west-1
 
+      - name: Restore timestamps for more efficient S3 sync
+        uses: chetan/git-restore-mtime-action@v2
+
       - name: Copy files to the bucket
         run:
           aws s3 sync website s3://${{ secrets.WEBSITE_S3_BUCKET_NAME }}
