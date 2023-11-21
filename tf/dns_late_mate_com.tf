@@ -65,15 +65,20 @@ resource "aws_route53_record" "late_mate_com_txt" {
   ttl = 600
   records = [
     # SPF record (servers that we allow to send email from @late-mate.com)
-    "v=spf1 include:spf.messagingengine.com ?all",
+    # - messagingengine.com is Fastmail, mailgun is (probably?) buttondown
+    # - Buttondown apparently uses a bunch of different ESPs, but doesn't rotate people
+    #   to new ones after they validated DNS records in the settings.
+    #   I asked to switch us to a ESP that supports sending from the top level domain,
+    #   got switched to Postmark (yay) (author: Dan)
+    "v=spf1 include:spf.messagingengine.com include:spf.mtasv.net ?all",
     # google search console verification
     "google-site-verification=9VNWCK8ztMYpCFAV0S549RsX1EDFil5nxOymIGR6ULM"
   ]
 }
 
-resource "aws_route53_record" "late_mate_com_dkim" {
+# fastmail sending mail from @late-mate.com
+resource "aws_route53_record" "late_mate_com_dkim_cname" {
   for_each = {
-    # fastmail sending mail from @late-mate.com
     "fm1._domainkey.late-mate.com": "fm1.late-mate.com.dkim.fmhosted.com"
     "fm2._domainkey.late-mate.com": "fm2.late-mate.com.dkim.fmhosted.com"
     "fm3._domainkey.late-mate.com": "fm3.late-mate.com.dkim.fmhosted.com"
@@ -84,6 +89,29 @@ resource "aws_route53_record" "late_mate_com_dkim" {
   ttl = 600
   records = [
     each.value
+  ]
+}
+
+# buttondown sending email from @late-mate.com (via postmark)
+resource "aws_route53_record" "late_mate_com_dkim_txt" {
+  name    = "20231121212519pm._domainkey.late-mate.com"
+  type    = "TXT"
+  zone_id = aws_route53_zone.late_mate_com.id
+  ttl = 600
+  records = [
+    "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCYYdqE/rvOLjkBqe2cI5hjX4hOsL66siYnDmlKrdWVlhAUx+Zls0JtgCMzbAqOPC41Eme0snX35rQvm5uz3qM5DPT3Rq",
+    "Bt/Sn9LfTNn6Yn8yNTzLQAmyisLC63cEn+BUFpddCTvbITWLe0xxMV3quxyl1c4rseDJcgTLIHTaFgQwIDAQAB"
+  ]
+}
+
+# psotmark's Return-Path domain (for bounced email) (used by Buttondown)
+resource "aws_route53_record" "late_mate_com_return_path" {
+  name    = "pm-bounces.late-mate.com"
+  type    = "CNAME"
+  zone_id = aws_route53_zone.late_mate_com.id
+  ttl = 600
+  records = [
+    "pm.mtasv.net"
   ]
 }
 
