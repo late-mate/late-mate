@@ -99,8 +99,7 @@ resource "aws_route53_record" "late_mate_com_dkim_txt" {
   zone_id = aws_route53_zone.late_mate_com.id
   ttl = 600
   records = [
-    "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCYYdqE/rvOLjkBqe2cI5hjX4hOsL66siYnDmlKrdWVlhAUx+Zls0JtgCMzbAqOPC41Eme0snX35rQvm5uz3qM5DPT3Rq",
-    "Bt/Sn9LfTNn6Yn8yNTzLQAmyisLC63cEn+BUFpddCTvbITWLe0xxMV3quxyl1c4rseDJcgTLIHTaFgQwIDAQAB"
+    "k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCYYdqE/rvOLjkBqe2cI5hjX4hOsL66siYnDmlKrdWVlhAUx+Zls0JtgCMzbAqOPC41Eme0snX35rQvm5uz3qM5DPT3RqBt/Sn9LfTNn6Yn8yNTzLQAmyisLC63cEn+BUFpddCTvbITWLe0xxMV3quxyl1c4rseDJcgTLIHTaFgQwIDAQAB"
   ]
 }
 
