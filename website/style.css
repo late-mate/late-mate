@@ -81,7 +81,7 @@ input[type=submit]:active { background-color: oklch(0.55 0.2 280); position: rel
 
 @media screen and (max-width: 599px) {
   main { margin-top: 2rem; }
-  .columns { flex-direction: column; }
+  .columns { flex-direction: column; align-items: center; }
   form { padding: 3rem 0 2rem; margin: 1rem 0 3rem; border-radius: 0; }
   .footer { padding: 2rem 2vw; }
 }
