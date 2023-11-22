@@ -70,7 +70,7 @@ img { width: 50rem; margin: 2rem 0; }
 form { background: #3B3A53; padding: 4rem 0 3rem 0; width: calc(min(100vw, 48rem)); border-radius: 1rem; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 0.5rem; margin: 2rem 0; }
 form > div { width: calc(min(96vw, var(--width))); display: flex; gap: 1rem; }
 form > p { width: calc(min(96vw, var(--width))); font-size: 1rem; color: rgba(255, 255, 255, 0.25); }
-input[type=email] { height: 3rem; flex-grow: 1; background-color: rgba(0, 0, 0, 0.3); border: none; border-radius: 0.5rem; padding: 0 1rem; outline: none; }
+input[type=email] { height: 3rem; width: 50%; flex-grow: 1; background-color: rgba(0, 0, 0, 0.3); border: none; border-radius: 0.5rem; padding: 0 1rem; outline: none; }
 input[type=email]:focus { background-color: rgba(0, 0, 0, 0.4); }
 
 input[type=submit] { height: 3rem; background-color: var(--accent); border: none; border-radius: 0.5rem; padding: 0 1.5rem; outline: none; }
