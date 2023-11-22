@@ -101,7 +101,7 @@
 
       <p>Subscribe to get project updates and be notified when pre-orders open:</p>
 
-      <form action="https://buttondown.email/api/emails/embed-subscribe/late-mate" method="post" target="popupwindow" onsubmit="window.open('https://buttondown.email/late-mate', 'popupwindow')" class="embeddable-buttondown-form">
+      <form action="https://buttondown.email/api/emails/embed-subscribe/late-mate" method="post" target="popupwindow" onsubmit="onSubscribeSubmit()" class="embeddable-buttondown-form">
         <div>
           <input type="email" name="email" placeholder="Your email">
           <input type="submit" value="Subscribe" class="plausible-event-name=Subscribe">
@@ -139,5 +139,12 @@
         data-api="/plau/api/event"
         src="/plau/js/script.outbound-links.tagged-events.js"
       ></script>
+    <script>
+        window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+        window.onSubscribeSubmit = function() {
+            plausible('Subscribe');
+            return window.open('https://buttondown.email/late-mate', 'popupwindow');
+        }
+    </script>
   </body>
 </html>
