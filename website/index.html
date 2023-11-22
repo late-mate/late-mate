@@ -104,7 +104,7 @@
       <form action="https://buttondown.email/api/emails/embed-subscribe/late-mate" method="post" target="popupwindow" onsubmit="window.open('https://buttondown.email/late-mate', 'popupwindow')" class="embeddable-buttondown-form">
         <div>
           <input type="email" name="email" placeholder="Your email">
-          <input type="submit" value="Subscribe">
+          <input type="submit" value="Subscribe" class="plausible-event-name=Subscribe">
         </div>
         <p>No spam. Unsubscribe at any time</p>
       </form>
@@ -137,7 +137,7 @@
         defer
         data-domain="late-mate.com"
         data-api="/plau/api/event"
-        src="/plau/js/script.outbound-links.js"
+        src="/plau/js/script.outbound-links.tagged-events.js"
       ></script>
   </body>
 </html>
