@@ -1,0 +1,7 @@
+# Edited down from Embassy's toolchain on 2023-11-09
+[toolchain]
+channel = "nightly-2023-11-01"
+components = [ "rust-src", "rustfmt", "llvm-tools" ]
+targets = [
+    "thumbv6m-none-eabi",
+]

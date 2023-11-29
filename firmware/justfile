@@ -1,0 +1,5 @@
+prepare:
+    cargo install probe-rs --features cli
+
+flash:
+    cargo run --release --bin latemate
