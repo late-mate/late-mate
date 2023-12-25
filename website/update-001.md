@@ -1,5 +1,7 @@
-Update 001 — Programming on the metal — Late Mate
+Update 001 — Programming on the metal
 ---
+
+[Read this email on our website](https://late-mate.com/update-001.html)
 
 Hi! How is it going? Nikita here.
 
@@ -76,6 +78,8 @@ Compared to them, we plan to attack the problem from a different angle:
 # Board progress
 
 Dan has asked me to share this picture:
+
+![Schematic Editor](https://late-mate.com/update-001.webp)
 
 Not sure what to make of it but no doubt it’s important.
 
