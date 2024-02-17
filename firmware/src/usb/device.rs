@@ -1,7 +1,7 @@
 use embassy_rp::peripherals::USB;
 use embassy_usb::driver::Driver;
 use embassy_usb::{Builder, Config};
-use static_cell::make_static;
+use static_cell::StaticCell;
 
 pub const MAX_PACKET_SIZE: u16 = 64;
 
@@ -25,11 +25,17 @@ pub fn init_usb<'d, D: Driver<'d>>(driver: D) -> Builder<'d, D> {
     // It needs some buffers for building the descriptors.
     // (comments above are from the Embassy repo)
 
-    let device_descriptor = make_static!([0; 256]);
-    let config_descriptor = make_static!([0; 256]);
-    let bos_descriptor = make_static!([0; 256]);
-    let msos_descriptor = make_static!([]);
-    let control_buf = make_static!([0; 64]);
+    static DEVICE_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
+    static CONFIG_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
+    static BOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
+    static MSOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
+    static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+
+    let device_descriptor: &'static mut [u8; 256] = DEVICE_DESCRIPTOR.init([0; 256]);
+    let config_descriptor: &'static mut [u8; 256] = CONFIG_DESCRIPTOR.init([0; 256]);
+    let bos_descriptor: &'static mut [u8; 256] = BOS_DESCRIPTOR.init([0; 256]);
+    let msos_descriptor: &'static mut [u8; 256] = MSOS_DESCRIPTOR.init([0; 256]);
+    let control_buf: &'static mut [u8; 64] = CONTROL_BUF.init([0; 64]);
 
     Builder::new(
         driver,

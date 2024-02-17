@@ -1,6 +1,6 @@
 #![no_std]
-#![feature(type_alias_impl_trait)]
 
+use defmt::info;
 // TODO: conditional compilation
 // https://github.com/simmsb/rusty-dilemma/blob/3b166839d33b9507bc81d1d2e9c6d6c2e3be8705/firmware/src/lib.rs#L34
 #[allow(unused_imports)]
@@ -10,7 +10,9 @@ mod temp_poller;
 mod usb;
 
 use embassy_executor::Spawner;
+use embassy_rp::pwm::{Config as PwmConfig, Pwm};
 use embassy_rp::{adc, bind_interrupts};
+use embassy_time::Timer;
 
 bind_interrupts!(struct AdcIrqs {
     ADC_IRQ_FIFO => adc::InterruptHandler;
@@ -22,6 +24,18 @@ bind_interrupts!(struct UsbIrqs {
 
 pub async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
+
+    // let mut c: PwmConfig = Default::default();
+    // c.top = 0x8000;
+    // c.compare_a = 8;
+    // let mut pwm = Pwm::new_output_a(p.PWM_CH1, p.PIN_2, c.clone());
+    //
+    // loop {
+    //     info!("current LED duty cycle: {}/32768", c.compare_a);
+    //     Timer::after_secs(1).await;
+    //     c.compare_a = c.compare_a.rotate_left(4);
+    //     pwm.set_config(&c);
+    // }
 
     // todo: clocks?
 

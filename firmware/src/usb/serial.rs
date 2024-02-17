@@ -5,7 +5,7 @@ use embassy_sync::channel::Channel;
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Sender, State};
 use embassy_usb::Builder;
 use numtoa::NumToA;
-use static_cell::make_static;
+use static_cell::StaticCell;
 
 const TO_HOST_BUFFER: usize = 16; // number of messages, I assume?
 const FROM_HOST_BUFFER: usize = 16;
@@ -48,7 +48,8 @@ pub fn init(
     spawner: &Spawner,
     builder: &mut Builder<'static, embassy_rp::usb::Driver<'static, USB>>,
 ) {
-    let cdc_state = make_static!(State::new());
+    static CDC_STATE: StaticCell<State> = StaticCell::new();
+    let cdc_state: &'static mut State = CDC_STATE.init(State::new());
 
     let class = CdcAcmClass::new(builder, cdc_state, MAX_PACKET_SIZE);
 
