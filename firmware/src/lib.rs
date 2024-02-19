@@ -7,9 +7,11 @@ use defmt::info;
 use {defmt_rtt as _, panic_probe as _};
 
 mod ads1220;
+mod tasks;
 mod temp_poller;
 mod usb;
 
+use crate::tasks::light_sensor;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::pwm::{Config as PwmConfig, Pwm};
@@ -41,62 +43,66 @@ pub async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
     info!("Hello World!");
 
-    let miso = p.PIN_16;
-    let mosi = p.PIN_19;
     let clk = p.PIN_18;
+    let mosi = p.PIN_19;
+    let miso = p.PIN_16;
+    let drdy = p.PIN_22;
 
-    let mut spi_config = SpiConfig::default();
-    spi_config.frequency = 1_000_000;
-    // per the datasheet:
-    // "Only SPI mode 1 (CPOL = 0, CPHA = 1) is supported."
-    spi_config.phase = embedded_hal::spi::MODE_1.phase;
-    spi_config.polarity = embedded_hal::spi::MODE_1.polarity;
+    light_sensor::init(
+        &spawner, p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, drdy,
+    );
 
-    let mut spi = Spi::new(p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, spi_config);
-
-    let command: u8 = ads1220::command::Command::Wreg(
-        ads1220::command::Offset::Register0,
-        ads1220::command::Length::L1,
-    )
-    .into();
-    let tx_buf = [
-        command,
-        ads1220::config::Register0::new(
-            Default::default(),
-            Default::default(),
-            ads1220::config::Mux::Ain2Avss,
-        )
-        .to_value(),
-    ];
-    let mut rx_buf = [0_u8; 2];
-    spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-    info!("wreg command return: {:?}", rx_buf);
-
-    let command: u8 = ads1220::command::Command::Rreg(
-        ads1220::command::Offset::Register0,
-        ads1220::command::Length::L4,
-    )
-    .into();
-    let tx_buf = [command, 0, 0, 0, 0];
-    let mut rx_buf = [0_u8; 5];
-    spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-    info!("rreg command return: {:?}, {=u8:b}", rx_buf, rx_buf[1]);
-
-    loop {
-        let command: u8 = ads1220::command::Command::StartOrSync.into();
-        let tx_buf = [command];
-        let mut rx_buf = [0_u8; 1];
-        spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-        Timer::after_millis(500).await;
-
-        // let command: u8 = ads1220::command::Command::Rdata.into();
-        let tx_buf = [0, 0, 0, 0];
-        let mut rx_buf = [0_u8; 4];
-        spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-
-        info!("read result: {:?}", rx_buf);
-        Timer::after_secs(1).await;
-    }
+    // let mut spi_config = SpiConfig::default();
+    // spi_config.frequency = 1_000_000;
+    // // per the datasheet:
+    // // "Only SPI mode 1 (CPOL = 0, CPHA = 1) is supported."
+    // spi_config.phase = embedded_hal::spi::MODE_1.phase;
+    // spi_config.polarity = embedded_hal::spi::MODE_1.polarity;
+    //
+    // let mut spi = Spi::new(p.SPI0, clk, mosi, miso, spi_config);
+    //
+    // let command: u8 = ads1220::command::Command::Wreg(
+    //     ads1220::command::Offset::Register0,
+    //     ads1220::command::Length::L1,
+    // )
+    // .into();
+    //
+    // let tx_buf = [
+    //     command,
+    //     ads1220::config::register0::Register0::new()
+    //         .with_mux(ads1220::config::register0::Mux::Ain2Avss)
+    //         .into(),
+    //     ads1220::config::register1::Register1::new()
+    //         .with_data_rate(ads1220::config::register1::DataRate::Normal20)
+    //         .into(),
+    // ];
+    // spi.write(&tx_buf).await.unwrap();
+    //
+    // let command: u8 = ads1220::command::Command::Rreg(
+    //     ads1220::command::Offset::Register0,
+    //     ads1220::command::Length::L4,
+    // )
+    // .into();
+    // let tx_buf = [command, 0, 0, 0, 0];
+    // let mut rx_buf = [0_u8; 5];
+    // spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
+    // info!("rreg command return: {:?}, {=u8:b}", rx_buf, rx_buf[1]);
+    //
+    // loop {
+    //     let command: u8 = ads1220::command::Command::StartOrSync.into();
+    //     let tx_buf = [command];
+    //     let mut rx_buf = [0_u8; 1];
+    //     spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
+    //     Timer::after_millis(500).await;
+    //
+    //     // let command: u8 = ads1220::command::Command::Rdata.into();
+    //     let tx_buf = [0, 0, 0, 0];
+    //     let mut rx_buf = [0_u8; 4];
+    //     spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
+    //
+    //     info!("read result: {:?}", rx_buf);
+    //     Timer::after_secs(1).await;
+    // }
 
     // -- LATER --
     // let usb_driver = embassy_rp::usb::Driver::new(p.USB, UsbIrqs);
@@ -107,5 +113,5 @@ pub async fn main(spawner: Spawner) {
     //
     // temp_poller::init(&spawner, adc, temp_chan);
     //
-    // core::future::pending::<()>().await;
+    core::future::pending::<()>().await;
 }

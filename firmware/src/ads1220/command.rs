@@ -1,6 +1,3 @@
-// I can't use Bilge here because Rreg/Wreg pack magic values with enums,
-// and Bilge can't do that.
-
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum Offset {

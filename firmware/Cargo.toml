@@ -30,7 +30,8 @@ numtoa = "0.2.4"
 # required for static_cell to compile (it enables CAS emulation)
 portable-atomic = { version = "1.6", features = ["critical-section"] }
 static_cell = { version = "2", features = [] }
-bilge = "0.2.0"
+bitfield-struct = "0.6.0"
+log = "0.4.20"
 
 # see https://embassy.dev/book/dev/getting_started.html#_it_didnt_work
 [profile.release]
