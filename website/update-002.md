@@ -31,7 +31,8 @@ YES it will be smaller. Relax. Size doesn’t always matter.
 
 Prototype progress has set morale very high. Next steps include:
 
-- develop a USB driver and
+- ditch Fusion 360 for SolidWorks (if you know you know),
+- get the device talking over USB, and
 - develop a desktop app that will control it.
 
 All in Rust, of course. So safe. So strongly typed.
