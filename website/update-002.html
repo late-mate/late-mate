@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="favicon.ico" sizes="32x32">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <title>Late Mate</title>
+    <link href="style.css" rel="stylesheet">
+
+    <meta name="description" content="Portable universal latency measurement device — from keypress to the screen" />
+    <meta name="twitter:image:src" content="https://late-mate.com/card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Late Mate — Measure latency from keypress to the screen" />
+    <meta name="twitter:description" content="Portable universal latency measurement device — from keypress to the screen" />
+
+    <meta property="og:image" content="https://late-mate.com/card.jpg" />
+    <meta property="og:image:alt" content="Portable universal latency measurement device — from keypress to the screen" />
+    <meta property="og:site_name" content="Late Mate" />
+    <meta property="og:type" content="object" />
+    <meta property="og:title" content="Late Mate — Measure latency from keypress to the screen" />
+    <meta property="og:url" content="https://late-mate.com/" />
+    <meta property="og:description" content="Portable universal latency measurement device — from keypress to the screen" />
+
+  </head>
+  <body class=blog>
+    <main>
+      <a href="index.html"><- Home</a>
+
+      <h1>Update 002 — Prototype progress</h1>
+      <p>Feb 23, 2024</p>
+
+<p>Another two months, another update!</p>
+
+<p>We’ve been busy and finally have something to show for it. Behold:</p>
+
+<img src="update-002.webp" alt="Prototype" />
+
+<p>Okay, okay, don’t get too excited. <em>This is a working prototype</em>. I am sharing this with you only because we are friends, okay? </p>
+
+<p>In fact, it already has a few mistakes:</p>
+
+<img src="update-002-annotated.webp" alt="Prototype, annotated" />
+
+<p>The whole shape of the thing will be different once we design our own board. Smaller. Maybe round? Hard to tell :) Meanwhile, we develop on those.</p>
+
+<p>What are we developing? Well, it can measure light levels underneath. Notice the numbers in the console when background changes:</p>
+
+<video autoplay controls loop><source src="update-002-board.mp4" type="video/mp4" /></video>
+
+<p>Okay, I have one more video to share. Our board of directors was meeting today and we recorded another demo:</p>
+
+<video autoplay controls loop><source src="update-002-call.mp4" type="video/mp4" /></video>
+
+<p>YES it will be smaller. Relax. Size doesn’t always matter.</p>
+
+<h2>Next steps</h2>
+
+<p>Prototype progress has set morale very high. Next steps include:</p>
+
+<ul>
+<li>develop a USB driver and</li>
+<li>develop a desktop app that will control it.</li>
+</ul>
+
+<p>All in Rust, of course. So safe. So strongly typed.</p>
+
+<p>Until soon,<br>
+Niki &amp; Dan</p>
+
+    </main>
+
+    <div class=footer>
+      <p>&copy; 2023 Nikita Prokopov, Dan Groshev</p>
+      <p>Last update: Dec 25, 2023</p>
+    </div>
+
+    <!--suppress HtmlUnknownTarget -->
+    <script
+        defer
+        data-domain="late-mate.com"
+        data-api="/plau/api/event"
+        src="/plau/js/script.outbound-links.tagged-events.js"
+      ></script>
+    <script>
+        window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+        window.onSubscribeSubmit = function() {
+            plausible('Subscribe');
+            return window.open('https://buttondown.email/late-mate', 'popupwindow');
+        }
+    </script>
+  </body>
+</html>

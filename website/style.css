@@ -59,7 +59,7 @@ li { margin-left: 2rem; }
 strong { color: oklch(0.8 0.2 280); }
 a { color: oklch(0.8 0.2 280); text-decoration-color: oklch(0.8 0.2 280 / 0.3); } 
 a:hover { text-decoration: underline; }
-img { width: 50rem; margin: 2rem 0; }
+img, video { width: 50rem; margin: 2rem 0; }
 
 
 
