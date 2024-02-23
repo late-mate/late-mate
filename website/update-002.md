@@ -19,11 +19,11 @@ The whole shape of the thing will be different once we design our own board. Sma
 
 What are we developing? Well, it can measure light levels underneath. Notice the numbers in the console when background changes:
 
-<video autoplay controls loop><source src="https://late-mate.com/update-002-board.mp4" /></video>
+<video autoplay controls loop><source src="https://late-mate.com/update-002-board.mp4" type="video/mp4" /></video>
 
 Okay, I have one more video to share. Our board of directors was meeting today and we recorded another demo:
 
-<video autoplay controls loop><source src="https://late-mate.com/update-002-call.mp4 /><video>
+<video autoplay controls loop><source src="https://late-mate.com/update-002-call.mp4" type="video/mp4" /></video>
 
 YES it will be smaller. Relax. Size doesn’t always matter.
 
