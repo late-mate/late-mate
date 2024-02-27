@@ -6,42 +6,25 @@ use defmt::info;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 
-mod ads1220;
 mod tasks;
 mod temp_poller;
 mod usb;
 
 use crate::tasks::light_sensor;
 use embassy_executor::Spawner;
-use embassy_rp::gpio::{Level, Output};
-use embassy_rp::pwm::{Config as PwmConfig, Pwm};
-use embassy_rp::spi::{Config as SpiConfig, Phase as SpiPhase, Polarity as SpiPolarity, Spi};
-use embassy_rp::{adc, bind_interrupts};
-use embassy_time::Timer;
+use embassy_rp::bind_interrupts;
+use embassy_rp::usb::Driver as UsbDriver;
 
-// bind_interrupts!(struct UsbIrqs {
-//     USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
-// });
+bind_interrupts!(struct UsbIrqs {
+    USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
+});
 
 pub async fn main(spawner: Spawner) {
-    // let p = embassy_rp::init(Default::default());
-
-    // let mut c: PwmConfig = Default::default();
-    // c.top = 0x8000;
-    // c.compare_a = 8;
-    // let mut pwm = Pwm::new_output_a(p.PWM_CH1, p.PIN_2, c.clone());
-    //
-    // loop {
-    //     info!("current LED duty cycle: {}/32768", c.compare_a);
-    //     Timer::after_secs(1).await;
-    //     c.compare_a = c.compare_a.rotate_left(4);
-    //     pwm.set_config(&c);
-    // }
+    info!("Late Mate is booting up");
 
     // todo: clocks?
 
     let p = embassy_rp::init(Default::default());
-    info!("Hello World!");
 
     let clk = p.PIN_18;
     let mosi = p.PIN_19;
@@ -52,60 +35,24 @@ pub async fn main(spawner: Spawner) {
         &spawner, p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, drdy,
     );
 
-    // let mut spi_config = SpiConfig::default();
-    // spi_config.frequency = 1_000_000;
-    // // per the datasheet:
-    // // "Only SPI mode 1 (CPOL = 0, CPHA = 1) is supported."
-    // spi_config.phase = embedded_hal::spi::MODE_1.phase;
-    // spi_config.polarity = embedded_hal::spi::MODE_1.polarity;
+    // TODO: https://docs.embassy.dev/embassy-sync/git/default/pubsub/struct.PubSubChannel.html
+    //       for the current light level
+
+    // TODO:
+    // - LED reflecting the light level
+    // - USB serial output
+    // - USB
+
+    // USB CDC
+    // USB mass storage, ethernet card (ECM), HID, CDC (serial port)
+
+    // USB CDC -
+    // USB HID - ???
     //
-    // let mut spi = Spi::new(p.SPI0, clk, mosi, miso, spi_config);
-    //
-    // let command: u8 = ads1220::command::Command::Wreg(
-    //     ads1220::command::Offset::Register0,
-    //     ads1220::command::Length::L1,
-    // )
-    // .into();
-    //
-    // let tx_buf = [
-    //     command,
-    //     ads1220::config::register0::Register0::new()
-    //         .with_mux(ads1220::config::register0::Mux::Ain2Avss)
-    //         .into(),
-    //     ads1220::config::register1::Register1::new()
-    //         .with_data_rate(ads1220::config::register1::DataRate::Normal20)
-    //         .into(),
-    // ];
-    // spi.write(&tx_buf).await.unwrap();
-    //
-    // let command: u8 = ads1220::command::Command::Rreg(
-    //     ads1220::command::Offset::Register0,
-    //     ads1220::command::Length::L4,
-    // )
-    // .into();
-    // let tx_buf = [command, 0, 0, 0, 0];
-    // let mut rx_buf = [0_u8; 5];
-    // spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-    // info!("rreg command return: {:?}, {=u8:b}", rx_buf, rx_buf[1]);
-    //
-    // loop {
-    //     let command: u8 = ads1220::command::Command::StartOrSync.into();
-    //     let tx_buf = [command];
-    //     let mut rx_buf = [0_u8; 1];
-    //     spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-    //     Timer::after_millis(500).await;
-    //
-    //     // let command: u8 = ads1220::command::Command::Rdata.into();
-    //     let tx_buf = [0, 0, 0, 0];
-    //     let mut rx_buf = [0_u8; 4];
-    //     spi.transfer(&mut rx_buf, &tx_buf).await.unwrap();
-    //
-    //     info!("read result: {:?}", rx_buf);
-    //     Timer::after_secs(1).await;
-    // }
+    // TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu
 
     // -- LATER --
-    // let usb_driver = embassy_rp::usb::Driver::new(p.USB, UsbIrqs);
+    let usb_driver = UsbDriver::new(p.USB, UsbIrqs);
     // usb::init(&spawner, usb_driver);
     //
     // let adc = adc::Adc::new(p.ADC, AdcIrqs, adc::Config::default());

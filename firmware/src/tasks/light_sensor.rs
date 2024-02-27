@@ -1,15 +1,14 @@
-use crate::ads1220::command::{Command, Length, Offset};
-use crate::ads1220::config::{
+use ads1220::command::{Command, Length, Offset};
+use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
     Vref,
 };
-use cortex_m::delay::Delay;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Input, Pull};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, SPI0};
 use embassy_rp::spi;
-use embassy_rp::spi::{Async, Spi};
+use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_time::Timer;
 
 #[embassy_executor::task]
@@ -26,6 +25,7 @@ async fn light_sensor_task(mut spi: Spi<'static, SPI0, Async>, mut drdy: Input<'
         drdy.wait_for_low().await;
         let mut rx_buf = [0u8; 3];
         spi.read(&mut rx_buf).await.unwrap();
+
         let light_bytes = [0u8, rx_buf[0], rx_buf[1], rx_buf[2]];
         let light_level = u32::from_be_bytes(light_bytes);
         info!("light level: {=u32:08}", light_level);
@@ -40,7 +40,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
             .with_pga(Pga::Bypassed)
             .into(),
         Register1::new()
-            .with_data_rate(DataRate::Normal20)
+            .with_data_rate(DataRate::Normal45)
             .with_mode(Mode::Turbo)
             .with_conversion_mode(ConversionMode::Continuous)
             .into(),
@@ -82,8 +82,9 @@ pub fn init(
     spi_config.frequency = 1_000_000;
     // per the datasheet:
     // "Only SPI mode 1 (CPOL = 0, CPHA = 1) is supported."
-    spi_config.phase = embedded_hal::spi::MODE_1.phase;
-    spi_config.polarity = embedded_hal::spi::MODE_1.polarity;
+    // Mapping of mode to Phase/Polarity is taken from embedded-hal's spi::Mode::MODE_1
+    spi_config.phase = Phase::CaptureOnSecondTransition;
+    spi_config.polarity = Polarity::IdleLow;
 
     let spi = Spi::new(
         spi_instance,

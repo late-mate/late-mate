@@ -1,4 +1,3 @@
-use crate::ads1220::config::register1::DataRate;
 use bitfield_struct::bitfield;
 
 /// Voltage reference selection
@@ -143,4 +142,15 @@ pub struct Register2 {
     pub low_side_power: LowSidePower,
     #[bits(3, default=IdacCurrent::Off)]
     pub idac_current: IdacCurrent,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let reg = Register2::new();
+        assert_eq!(u8::from(reg), 0u8, "default register value is a zero byte");
+    }
 }

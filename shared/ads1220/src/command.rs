@@ -27,9 +27,9 @@ pub enum Command {
     Wreg(Offset, Length),
 }
 
-impl Into<u8> for Command {
-    fn into(self) -> u8 {
-        match self {
+impl From<Command> for u8 {
+    fn from(command: Command) -> Self {
+        match command {
             Command::Reset => 0b0000_0110,
             Command::StartOrSync => 0b0000_1000,
             Command::Powerdown => 0b0000_1010,
@@ -37,5 +37,22 @@ impl Into<u8> for Command {
             Command::Rreg(offset, length) => 0b0010_0000 | (offset as u8) << 2 | length as u8,
             Command::Wreg(offset, length) => 0b0100_0000 | (offset as u8) << 2 | length as u8,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wreg() {
+        let command = Command::Wreg(Offset::Register0, Length::L2);
+        assert_eq!(u8::from(command), 0b0100_0001u8, "the command must match the datasheet example");
+    }
+
+    #[test]
+    fn test_rreg() {
+        let command = Command::Rreg(Offset::Register1, Length::L3);
+        assert_eq!(u8::from(command), 0b0010_0110, "the command must match the datasheet example");
     }
 }

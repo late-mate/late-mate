@@ -170,3 +170,14 @@ pub struct Register1 {
     #[bits(1, default=Bcs::Disabled)]
     pub bcs: Bcs,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let reg = Register1::new();
+        assert_eq!(u8::from(reg), 0u8, "default register value is a zero byte");
+    }
+}

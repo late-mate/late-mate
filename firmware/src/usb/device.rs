@@ -3,6 +3,7 @@ use embassy_usb::driver::Driver;
 use embassy_usb::{Builder, Config};
 use static_cell::StaticCell;
 
+// maximum for full speed USB
 pub const MAX_PACKET_SIZE: u16 = 64;
 
 pub fn init_usb<'d, D: Driver<'d>>(driver: D) -> Builder<'d, D> {
@@ -12,6 +13,7 @@ pub fn init_usb<'d, D: Driver<'d>>(driver: D) -> Builder<'d, D> {
     config.product = Some("USB-serial example");
     config.serial_number = Some("12345678");
     config.max_power = 100;
+    // todo: docstring suggests leaving it the default value (8)?
     config.max_packet_size_0 = 64;
 
     // Required for windows compatibility.

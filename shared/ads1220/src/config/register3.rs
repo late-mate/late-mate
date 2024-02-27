@@ -1,4 +1,3 @@
-use crate::ads1220::config::register2::{FirFilter, LowSidePower};
 use bitfield_struct::bitfield;
 
 /// IDAC1 routing configuration
@@ -117,4 +116,15 @@ pub struct Register3 {
     /// reserved value, must always be 0
     #[bits(1)]
     __: u8,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let reg = Register3::new();
+        assert_eq!(u8::from(reg), 0u8, "default register value is a zero byte");
+    }
 }

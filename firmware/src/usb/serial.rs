@@ -1,14 +1,17 @@
 use crate::usb::device::MAX_PACKET_SIZE;
+use comms::{DeviceToHost, HostToDevice};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_sync::channel::Channel;
-use embassy_usb::class::cdc_acm::{CdcAcmClass, Sender, State};
+use embassy_usb::class::cdc_acm::{CdcAcmClass, Sender, State as CdcState};
 use embassy_usb::Builder;
 use numtoa::NumToA;
 use static_cell::StaticCell;
 
-const TO_HOST_BUFFER: usize = 16; // number of messages, I assume?
-const FROM_HOST_BUFFER: usize = 16;
+// number of buffered messages
+const TO_HOST_BUFFER: usize = 4;
+const FROM_HOST_BUFFER: usize = 4;
+
 // according to the docs:
 // "Use ThreadModeRawMutex when data is shared between tasks running on the same executor
 // but you want a singleton."
@@ -16,13 +19,13 @@ const FROM_HOST_BUFFER: usize = 16;
 // this one should be fine
 type RawMutex = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 
-pub static FROM_HOST: Channel<RawMutex, usize, FROM_HOST_BUFFER> = Channel::new();
-pub static TO_HOST: Channel<RawMutex, usize, TO_HOST_BUFFER> = Channel::new();
+pub static FROM_HOST: Channel<RawMutex, HostToDevice, FROM_HOST_BUFFER> = Channel::new();
+pub static TO_HOST: Channel<RawMutex, DeviceToHost, TO_HOST_BUFFER> = Channel::new();
 
 #[embassy_executor::task]
 async fn serial_out_task(mut serial_tx: Sender<'static, embassy_rp::usb::Driver<'static, USB>>) {
     loop {
-        let mut rx_buf: [u8; 16];
+        let mut rx_buf: [u8; MAX_PACKET_SIZE as usize];
         loop {
             let msg = TO_HOST.receive().await;
             rx_buf = [0; 16];
@@ -48,8 +51,8 @@ pub fn init(
     spawner: &Spawner,
     builder: &mut Builder<'static, embassy_rp::usb::Driver<'static, USB>>,
 ) {
-    static CDC_STATE: StaticCell<State> = StaticCell::new();
-    let cdc_state: &'static mut State = CDC_STATE.init(State::new());
+    static CDC_STATE: StaticCell<CdcState> = StaticCell::new();
+    let cdc_state: &'static mut CdcState = CDC_STATE.init(CdcState::new());
 
     let class = CdcAcmClass::new(builder, cdc_state, MAX_PACKET_SIZE);
 

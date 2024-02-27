@@ -133,23 +133,25 @@ pub struct Register0 {
     pub pga: Pga,
 }
 
-// TODO: make tests work
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn test_register0() {
-//         let reg = Register0::new();
-//         assert_eq!(u8::from(reg), 0u8, "default register value is a zero byte");
-//
-//         let reg = Register0::new()
-//             .with_mux(Mux::AvddAvssMonitor)
-//             .with_gain(Gain::Gain64)
-//             .with_pga(Pga::Bypassed);
-//         assert_eq!(u8::from(reg), 0b1101_110_1u8);
-//
-//         let reg = Register0::new().with_mux(Mux::Ain0Ain2);
-//         assert_eq!(u8::from(reg), 0b0001_000_0u8);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let reg = Register0::new();
+        assert_eq!(u8::from(reg), 0u8, "default register value is a zero byte");
+    }
+
+    #[test]
+    fn test_bit_order() {
+        let reg = Register0::new()
+            .with_mux(Mux::AvddAvssMonitor)
+            .with_gain(Gain::Gain64)
+            .with_pga(Pga::Bypassed);
+        assert_eq!(u8::from(reg), 0b1101_110_1u8);
+
+        let reg = Register0::new().with_mux(Mux::Ain0Ain2);
+        assert_eq!(u8::from(reg), 0b0001_000_0u8);
+    }
+}
