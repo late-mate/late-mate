@@ -36,13 +36,13 @@ pub enum FeedResult<'a, T> {
     Consumed,
 
     /// Buffer was filled. Contains remaining section of input, if any.
-    OverFull(&'a [u8]),
+    OverFull { remaining: &'a [u8] },
 
     /// Reached end of chunk, but some part of decoding failed. Contains remaining section of
     /// input, if any.
     Error {
         error: postcard::Error,
-        release: &'a [u8],
+        remaining: &'a [u8],
     },
 
     /// Deserialization complete. Contains deserialized data and remaining section of input, if any.
@@ -65,6 +65,7 @@ impl CrcCobsAccumulator {
     /// Create a new accumulator.
     pub const fn new() -> Self {
         CrcCobsAccumulator {
+            // todo: I'm not sure that this is 100% correct, recheck/rethink
             buf: [0; MAX_BUFFER_SIZE],
             idx: 0,
         }
@@ -100,28 +101,25 @@ impl CrcCobsAccumulator {
             // Yes! We have an end of message here.
             // Add one to include the zero in the "take" portion
             // of the buffer, rather than in "release".
-            let (take, release) = input.split_at(n + 1);
+            let (taken, remaining) = input.split_at(n + 1);
 
             // Does it fit?
-            if (self.idx + take.len()) <= MAX_BUFFER_SIZE {
+            if (self.idx + taken.len()) <= MAX_BUFFER_SIZE {
                 // Yes, add to the array
-                self.extend_unchecked(take);
+                self.extend_unchecked(taken);
 
                 // here's where the meat of the difference with postcard starts
                 let result = match cobs::decode_in_place(&mut self.buf[..self.idx]) {
                     Ok(uncobsed_len) => {
                         match from_bytes_u16(&self.buf[..uncobsed_len], CRC_ALG.digest()) {
-                            Ok(t) => FeedResult::Success {
-                                data: t,
-                                remaining: release,
-                            },
-                            Err(error) => FeedResult::Error { error, release },
+                            Ok(data) => FeedResult::Success { data, remaining },
+                            Err(error) => FeedResult::Error { error, remaining },
                         }
                     }
                     Err(_) => {
                         return FeedResult::Error {
                             error: postcard::Error::DeserializeBadEncoding,
-                            release,
+                            remaining,
                         };
                     }
                 };
@@ -131,7 +129,7 @@ impl CrcCobsAccumulator {
                 result
             } else {
                 self.idx = 0;
-                FeedResult::OverFull(release)
+                FeedResult::OverFull { remaining }
             }
         } else {
             // Does it fit?
@@ -139,7 +137,9 @@ impl CrcCobsAccumulator {
                 // nope
                 let new_start = MAX_BUFFER_SIZE - self.idx;
                 self.idx = 0;
-                FeedResult::OverFull(&input[new_start..])
+                FeedResult::OverFull {
+                    remaining: &input[new_start..],
+                }
             } else {
                 // yup!
                 self.extend_unchecked(input);
