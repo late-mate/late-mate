@@ -1,12 +1,20 @@
+use crate::RawMutex;
+use defmt::*;
+use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
-use embassy_usb::driver::Driver;
+use embassy_rp::usb::Driver;
+use embassy_sync::channel::Channel;
 use embassy_usb::{Builder, Config};
+use late_mate_comms::{DeviceToHost, HostToDevice};
 use static_cell::StaticCell;
+
+mod device;
+pub mod serial_comms;
 
 // maximum for full speed USB
 pub const MAX_PACKET_SIZE: u16 = 64;
 
-pub fn init_usb<'d, D: Driver<'d>>(driver: D) -> Builder<'d, D> {
+pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d, D> {
     // Create embassy-usb Config
     let mut config = Config::new(0x2e8a, 0x000a);
     config.manufacturer = Some("Embassy");
@@ -50,8 +58,17 @@ pub fn init_usb<'d, D: Driver<'d>>(driver: D) -> Builder<'d, D> {
     )
 }
 
-#[embassy_executor::task]
-pub async fn run_usb(builder: Builder<'static, embassy_rp::usb::Driver<'static, USB>>) {
-    let mut device = builder.build();
-    device.run().await;
+pub fn init(
+    spawner: &Spawner,
+    driver: Driver<'static, USB>,
+    from_host: &'static Channel<RawMutex, HostToDevice, { crate::FROM_HOST_BUFFER }>,
+    to_host: &'static Channel<RawMutex, DeviceToHost, { crate::TO_HOST_BUFFER }>,
+) {
+    info!("Initializing usb");
+
+    let mut builder = init_usb(driver);
+
+    serial_comms::init(spawner, &mut builder, from_host, to_host);
+
+    device::init(spawner, builder);
 }

@@ -68,6 +68,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
     assert_eq!(full_config, readback_buf);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn init(
     spawner: &Spawner,
     spi_instance: SPI0,

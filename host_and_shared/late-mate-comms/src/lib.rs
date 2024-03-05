@@ -1,88 +1,28 @@
 #![cfg_attr(not(test), no_std)]
 
+mod types;
+
+pub use crate::types::device_to_host::{DeviceToHost, Status, Version};
+pub use crate::types::hid::{HidReport, KeyboardReport, MouseReport};
+pub use crate::types::host_to_device::HostToDevice;
 use postcard::de_flavors::crc::from_bytes_u16;
+use postcard::experimental::max_size::MaxSize;
+use postcard::ser_flavors::crc::to_slice_u16;
 
-// usbd_hid doesn't implement Deserialize and Eq/PartialEq, so here we use our own
-// structs
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub struct MouseReport {
-    pub buttons: u8,
-    pub x: i8,
-    pub y: i8,
-    pub wheel: i8,
-    pub pan: i8,
+const fn max(a: usize, b: usize) -> usize {
+    [a, b][(a < b) as usize]
 }
 
-impl From<MouseReport> for usbd_hid::descriptor::MouseReport {
-    fn from(report: MouseReport) -> Self {
-        usbd_hid::descriptor::MouseReport {
-            buttons: report.buttons,
-            x: report.x,
-            y: report.y,
-            wheel: report.wheel,
-            pan: report.pan,
-        }
-    }
-}
+// CRC16 adds 2 bytes (duh)
+// COBS adds 2 bytes: 1 byte of overhead + sentinel (0)
+const BUFFER_OVERHEAD: usize = 4;
+pub const MAX_BUFFER_SIZE: usize = max(
+    HostToDevice::POSTCARD_MAX_SIZE,
+    DeviceToHost::POSTCARD_MAX_SIZE,
+) + BUFFER_OVERHEAD;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub struct KeyboardReport {
-    pub modifier: u8,
-    pub reserved: u8,
-    pub leds: u8,
-    pub keycodes: [u8; 6],
-}
-
-impl From<KeyboardReport> for usbd_hid::descriptor::KeyboardReport {
-    fn from(report: KeyboardReport) -> Self {
-        usbd_hid::descriptor::KeyboardReport {
-            modifier: report.modifier,
-            reserved: report.reserved,
-            leds: report.leds,
-            keycodes: report.keycodes,
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub enum HidReport {
-    Mouse(MouseReport),
-    Keyboard(KeyboardReport),
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub enum HostToDevice {
-    GetStatus,
-    // reset needs reports too to make sure that the light level comes back to the baseline
-    SendHidEvent { hid_event: u8, max_duration_ms: u32 },
-    MeasureBackground { duration_ms: u32 },
-    // note: enum has to allocate space for the largest member, so it can't be included
-    //       in the enum itself (regardless of allocation issues)
-    UpdateFirmware { length: u32 },
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub struct Version {
-    hardware: u8,
-    firmware: u32,
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub struct Status {
-    version: Version,
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
-pub enum DeviceToHost {
-    // see https://docs.rs/embassy-time/latest/embassy_time/
-    // and https://docs.rs/embassy-time/latest/embassy_time/struct.Instant.html
-    LightLevel { tick: u64, light_level: u32 },
-    HidReport { tick: u64, hid_report: HidReport },
-    Status(Status),
-}
-
-pub struct CrcCobsAccumulator<const N: usize> {
-    buf: [u8; N],
+pub struct CrcCobsAccumulator {
+    buf: [u8; MAX_BUFFER_SIZE],
     idx: usize,
 }
 
@@ -105,10 +45,6 @@ pub enum FeedResult<'a, T> {
         release: &'a [u8],
     },
 
-    /// Reached end of chunk, but deserialization failed. Contains remaining section of input, if
-    /// any.
-    DeserError(&'a [u8]),
-
     /// Deserialization complete. Contains deserialized data and remaining section of input, if any.
     Success {
         /// Deserialize data.
@@ -123,13 +59,13 @@ pub enum FeedResult<'a, T> {
 // CRC_16_KERMIT is also known as CRC-16-CCITT and seems to be pretty popular
 const CRC_ALG: crc::Crc<u16> = crc::Crc::<u16>::new(&crc::CRC_16_KERMIT);
 
-// todo: await and skip header bytes
-// todo: document LTMT_packet_CRC_ZERO
-impl<const N: usize> CrcCobsAccumulator<N> {
+// todo: expect and skip header bytes
+// todo: document LTMT_COBS(packet_CRC)_ZERO and adjust BUFFER_SIZE consts
+impl CrcCobsAccumulator {
     /// Create a new accumulator.
     pub const fn new() -> Self {
         CrcCobsAccumulator {
-            buf: [0; N],
+            buf: [0; MAX_BUFFER_SIZE],
             idx: 0,
         }
     }
@@ -167,7 +103,7 @@ impl<const N: usize> CrcCobsAccumulator<N> {
             let (take, release) = input.split_at(n + 1);
 
             // Does it fit?
-            if (self.idx + take.len()) <= N {
+            if (self.idx + take.len()) <= MAX_BUFFER_SIZE {
                 // Yes, add to the array
                 self.extend_unchecked(take);
 
@@ -199,9 +135,9 @@ impl<const N: usize> CrcCobsAccumulator<N> {
             }
         } else {
             // Does it fit?
-            if (self.idx + input.len()) > N {
+            if (self.idx + input.len()) > MAX_BUFFER_SIZE {
                 // nope
-                let new_start = N - self.idx;
+                let new_start = MAX_BUFFER_SIZE - self.idx;
                 self.idx = 0;
                 FeedResult::OverFull(&input[new_start..])
             } else {
@@ -224,10 +160,18 @@ impl<const N: usize> CrcCobsAccumulator<N> {
     }
 }
 
+// todo: think a bit more about errors
+pub fn encode<T: serde::Serialize + MaxSize>(msg: &T, result_buffer: &mut [u8]) -> usize {
+    let buffer = &mut [0u8; MAX_BUFFER_SIZE];
+    let crc_appended = to_slice_u16(msg, buffer, CRC_ALG.digest()).unwrap();
+
+    // +1 because try_encode doesn't actually add the default sentinel value of 0
+    cobs::try_encode(crc_appended, result_buffer).unwrap() + 1
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use postcard::ser_flavors::crc::to_slice_u16;
 
     #[test]
     fn test_basic_roundtrip() {
@@ -241,15 +185,11 @@ mod tests {
                 pan: 0,
             }),
         };
-        let buffer = &mut [0u8; 64];
-        let crc_appended = to_slice_u16(&packet, buffer, CRC_ALG.digest()).unwrap();
+        let buffer = &mut [0u8; MAX_BUFFER_SIZE];
+        let cobs_len = encode(&packet, buffer);
 
-        let cobs_buffer = &mut [0u8; 64];
-        // +1 because try_encode doesn't actually add the default sentinel value of 0
-        let cobs_len = cobs::try_encode(crc_appended, cobs_buffer).unwrap() + 1;
-
-        let mut accumulator = CrcCobsAccumulator::<32>::new();
-        let result = accumulator.feed::<DeviceToHost>(&cobs_buffer[..cobs_len]);
+        let mut accumulator = CrcCobsAccumulator::new();
+        let result = accumulator.feed::<DeviceToHost>(&buffer[..cobs_len]);
         match result {
             FeedResult::Success { data, remaining } => {
                 assert_eq!(packet, data);
@@ -261,4 +201,5 @@ mod tests {
 
     // todo: quickcheck test for the roundtrip
     // todo: check that arbitrary prefixes are ignored
+    // todo: fuzz test
 }
