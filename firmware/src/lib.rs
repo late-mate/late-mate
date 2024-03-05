@@ -49,15 +49,6 @@ pub async fn main(spawner: Spawner) {
         &spawner, p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, drdy,
     );
 
-    // TODO: https://docs.embassy.dev/embassy-sync/git/default/pubsub/struct.PubSubChannel.html
-    //       for the current light level
-
-    // TODO:
-    // - LED reflecting the light level
-    // - USB
-
-    // TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu
-
     let usb_driver = UsbDriver::new(p.USB, UsbIrqs);
     usb::init(&spawner, usb_driver, &COMMS_FROM_HOST, &COMMS_TO_HOST);
     //
@@ -68,3 +59,12 @@ pub async fn main(spawner: Spawner) {
     //
     core::future::pending::<()>().await;
 }
+
+// TODO: https://docs.embassy.dev/embassy-sync/git/default/pubsub/struct.PubSubChannel.html
+//       for the current light level
+
+// TODO:
+// - LED reflecting the light level
+// - USB
+
+// TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu

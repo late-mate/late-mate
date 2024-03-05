@@ -1,4 +1,4 @@
-use crate::RawMutex;
+use crate::{RawMutex, FROM_HOST_BUFFER, TO_HOST_BUFFER};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
@@ -16,7 +16,9 @@ pub const MAX_PACKET_SIZE: u16 = 64;
 
 pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d, D> {
     // Create embassy-usb Config
+    // todo: get proper ones from somewhere
     let mut config = Config::new(0x2e8a, 0x000a);
+    // todo: self evident
     config.manufacturer = Some("Embassy");
     config.product = Some("USB-serial example");
     config.serial_number = Some("12345678");
@@ -24,6 +26,7 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d
     // todo: docstring suggests leaving it the default value (8)?
     config.max_packet_size_0 = 64;
 
+    // todo: wtf
     // Required for windows compatibility.
     // https://developer.nordicsemi.com/nRF_Connect_SDK/doc/1.9.1/kconfig/CONFIG_CDC_ACM_IAD.html#help
     config.device_class = 0xEF;
@@ -61,8 +64,8 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d
 pub fn init(
     spawner: &Spawner,
     driver: Driver<'static, USB>,
-    from_host: &'static Channel<RawMutex, HostToDevice, { crate::FROM_HOST_BUFFER }>,
-    to_host: &'static Channel<RawMutex, DeviceToHost, { crate::TO_HOST_BUFFER }>,
+    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_BUFFER>,
+    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_BUFFER>,
 ) {
     info!("Initializing usb");
 
