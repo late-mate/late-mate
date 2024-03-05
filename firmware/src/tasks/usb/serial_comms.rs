@@ -30,23 +30,20 @@ async fn serial_rx_task(
         'cobs: while !window.is_empty() {
             window = match cobs_acc.feed::<HostToDevice>(window) {
                 FeedResult::Consumed => break 'cobs,
-                FeedResult::OverFull(remaining) => {
+                FeedResult::OverFull { remaining } => {
                     defmt::error!("overfull");
                     remaining
                 }
                 FeedResult::Error {
                     error: _e,
-                    release: remaining,
+                    remaining,
                 } => {
                     // todo: can't format the error with defmt without a derive
                     defmt::error!("error");
                     remaining
                 }
-                FeedResult::Success {
-                    data: msg,
-                    remaining,
-                } => {
-                    from_host.send(msg).await;
+                FeedResult::Success { data, remaining } => {
+                    from_host.send(data).await;
                     remaining
                 }
             }
