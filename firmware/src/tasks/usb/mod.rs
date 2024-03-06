@@ -1,4 +1,4 @@
-use crate::{RawMutex, FROM_HOST_BUFFER, TO_HOST_BUFFER};
+use crate::{RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
@@ -64,8 +64,8 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d
 pub fn init(
     spawner: &Spawner,
     driver: Driver<'static, USB>,
-    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_BUFFER>,
-    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_BUFFER>,
+    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_N_BUFFERED>,
+    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_N_BUFFERED>,
 ) {
     info!("Initializing usb");
 

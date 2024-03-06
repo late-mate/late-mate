@@ -3,13 +3,13 @@ use postcard::experimental::max_size::MaxSize;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Version {
-    hardware: u8,
-    firmware: u32,
+    pub hardware: u8,
+    pub firmware: u32,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Status {
-    version: Version,
+    pub version: Version,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]

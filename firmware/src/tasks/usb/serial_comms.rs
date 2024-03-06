@@ -1,12 +1,12 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
-use crate::{RawMutex, FROM_HOST_BUFFER, TO_HOST_BUFFER};
+use crate::{CommsFromHost, CommsToHost};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
-use embassy_sync::channel::Channel;
+
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State as CdcState};
 use embassy_usb::Builder;
 use late_mate_comms::{
-    encode, CrcCobsAccumulator, DeviceToHost, FeedResult, HostToDevice,
+    encode, CrcCobsAccumulator, FeedResult, HostToDevice,
     MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
 };
 use static_cell::StaticCell;
@@ -14,7 +14,7 @@ use static_cell::StaticCell;
 #[embassy_executor::task]
 async fn serial_rx_task(
     mut serial_rx: Receiver<'static, embassy_rp::usb::Driver<'static, USB>>,
-    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_BUFFER>,
+    from_host: &'static CommsFromHost,
 ) {
     serial_rx.wait_connection().await;
 
@@ -54,7 +54,7 @@ async fn serial_rx_task(
 #[embassy_executor::task]
 async fn serial_tx_task(
     mut serial_tx: Sender<'static, embassy_rp::usb::Driver<'static, USB>>,
-    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_BUFFER>,
+    to_host: &'static CommsToHost,
 ) {
     serial_tx.wait_connection().await;
 
@@ -78,8 +78,8 @@ async fn serial_tx_task(
 pub fn init(
     spawner: &Spawner,
     builder: &mut Builder<'static, embassy_rp::usb::Driver<'static, USB>>,
-    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_BUFFER>,
-    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_BUFFER>,
+    from_host: &'static CommsFromHost,
+    to_host: &'static CommsToHost,
 ) {
     static CDC_STATE: StaticCell<CdcState> = StaticCell::new();
     let cdc_state: &'static mut CdcState = CDC_STATE.init(CdcState::new());

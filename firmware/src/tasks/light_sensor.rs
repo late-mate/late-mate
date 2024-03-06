@@ -1,3 +1,4 @@
+use crate::{LightReadingsPublisher};
 use ads1220::command::{Command, Length, Offset};
 use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
@@ -9,10 +10,39 @@ use embassy_rp::gpio::{Input, Pull};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, SPI0};
 use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
-use embassy_time::Timer;
+use embassy_time::{Instant, Timer};
+use late_mate_comms::DeviceToHost;
+
+#[derive(Debug, Clone, Copy)]
+pub struct LightReading {
+    tick: Instant,
+    reading: u32,
+}
+
+impl From<LightReading> for DeviceToHost {
+    fn from(value: LightReading) -> Self {
+        DeviceToHost::LightLevel {
+            tick: value.tick.as_ticks(),
+            light_level: value.reading,
+        }
+    }
+}
+
+impl LightReading {
+    fn current(reading: u32) -> Self {
+        Self {
+            tick: Instant::now(),
+            reading,
+        }
+    }
+}
 
 #[embassy_executor::task]
-async fn light_sensor_task(mut spi: Spi<'static, SPI0, Async>, mut drdy: Input<'static, PIN_22>) {
+async fn light_sensor_task(
+    mut spi: Spi<'static, SPI0, Async>,
+    mut drdy: Input<'static, PIN_22>,
+    light_readings_pub: LightReadingsPublisher,
+) {
     info!("configuring the ADC");
     configure_adc(&mut spi).await;
 
@@ -28,7 +58,7 @@ async fn light_sensor_task(mut spi: Spi<'static, SPI0, Async>, mut drdy: Input<'
 
         let light_bytes = [0u8, rx_buf[0], rx_buf[1], rx_buf[2]];
         let light_level = u32::from_be_bytes(light_bytes);
-        info!("light level: {=u32:08}", light_level);
+        light_readings_pub.publish_immediate(LightReading::current(light_level));
     }
 }
 
@@ -78,6 +108,7 @@ pub fn init(
     tx_dma: DMA_CH0,
     rx_dma: DMA_CH1,
     drdy_pin: PIN_22,
+    light_readings_pub: LightReadingsPublisher,
 ) {
     let mut spi_config = spi::Config::default();
     spi_config.frequency = 1_000_000;
@@ -98,5 +129,5 @@ pub fn init(
     );
     let drdy = Input::new(drdy_pin, Pull::Up);
 
-    spawner.must_spawn(light_sensor_task(spi, drdy));
+    spawner.must_spawn(light_sensor_task(spi, drdy, light_readings_pub));
 }
