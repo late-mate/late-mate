@@ -44,6 +44,7 @@ pub static COMMS_FROM_HOST: CommsFromHost = Channel::new();
 pub static COMMS_TO_HOST: CommsToHost = Channel::new();
 
 const LIGHT_READINGS_N_BUFFERED: usize = 1;
+// reactor (for reporting back to the host) and LED
 const LIGHT_READINGS_MAX_SUBS: usize = 2;
 const LIGHT_READINGS_MAX_PUBS: usize = 1;
 type LightReadings = PubSubChannel<

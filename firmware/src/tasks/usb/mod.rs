@@ -19,9 +19,9 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d
     // todo: get proper ones from somewhere
     let mut config = Config::new(0x2e8a, 0x000a);
     // todo: self evident
-    config.manufacturer = Some("Embassy");
-    config.product = Some("USB-serial example");
-    config.serial_number = Some("12345678");
+    config.manufacturer = Some("Late Mate");
+    config.product = Some("Late Mate test board rev1");
+    config.serial_number = Some("06032024");
     config.max_power = 100;
     // todo: docstring suggests leaving it the default value (8)?
     config.max_packet_size_0 = 64;

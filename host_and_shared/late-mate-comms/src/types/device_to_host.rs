@@ -10,6 +10,7 @@ pub struct Version {
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Status {
     pub version: Version,
+    pub max_light_level: u32,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]

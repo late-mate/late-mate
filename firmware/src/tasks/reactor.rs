@@ -1,3 +1,4 @@
+use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
     CommsFromHost, CommsToHost, LightReadingsSubscriber, FIRMWARE_VERSION, HARDWARE_VERSION,
 };
@@ -22,6 +23,7 @@ async fn reactor_task(
                         hardware: HARDWARE_VERSION,
                         firmware: FIRMWARE_VERSION,
                     },
+                    max_light_level: MAX_LIGHT_LEVEL,
                 });
                 comms_to_host.send(status).await;
             }

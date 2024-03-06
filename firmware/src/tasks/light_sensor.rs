@@ -1,4 +1,4 @@
-use crate::{LightReadingsPublisher};
+use crate::LightReadingsPublisher;
 use ads1220::command::{Command, Length, Offset};
 use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
@@ -12,6 +12,9 @@ use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_time::{Instant, Timer};
 use late_mate_comms::DeviceToHost;
+
+// aassuming a saturating 24-bit ADC
+pub const MAX_LIGHT_LEVEL: u32 = (1 << 24) - 1;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LightReading {
@@ -70,7 +73,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
             .with_pga(Pga::Bypassed)
             .into(),
         Register1::new()
-            .with_data_rate(DataRate::Normal45)
+            .with_data_rate(DataRate::Normal1000)
             .with_mode(Mode::Turbo)
             .with_conversion_mode(ConversionMode::Continuous)
             .into(),
