@@ -1,19 +1,50 @@
-use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
+use crate::tasks::light_sensor::{LightReading, MAX_LIGHT_LEVEL};
 use crate::{
-    CommsFromHost, CommsToHost, LightReadingsSubscriber, FIRMWARE_VERSION, HARDWARE_VERSION,
+    CommsFromHost, CommsToHost, LightReadingsSubscriber, RawMutex, FIRMWARE_VERSION,
+    HARDWARE_VERSION,
 };
 use embassy_executor::Spawner;
-use embassy_time::Instant;
+use embassy_futures::select::{select, Either};
+use embassy_sync::signal::Signal;
+use embassy_time::{with_timeout, Duration, Instant, TimeoutError};
 use late_mate_comms::{DeviceToHost, HostToDevice, Status, Version};
 
 // this is needed to make sure we don't hang the device by mistake
-const MAX_MEASUREMENT_DURATION_MS: u32 = 1000 * 5;
+const MAX_BG_MEASUREMENT_DURATION: Duration = Duration::from_secs(5);
+// how long to wait for a new value from the ADC
+const BG_MEASUREMENT_TIMEOUT: Duration = Duration::from_millis(10);
+
+static BG_FINISH_TIME_SIGNAL: Signal<RawMutex, Instant> = Signal::new();
+
+#[embassy_executor::task]
+async fn bg_measurement_loop_task(
+    comms_to_host: &'static CommsToHost,
+    mut light_readings_sub: LightReadingsSubscriber,
+) {
+    loop {
+        let mut finish_time = BG_FINISH_TIME_SIGNAL.wait().await;
+        'inner: while Instant::now() < finish_time {
+            match select(
+                with_timeout(
+                    BG_MEASUREMENT_TIMEOUT,
+                    light_readings_sub.next_message_pure(),
+                ),
+                BG_FINISH_TIME_SIGNAL.wait(),
+            )
+            .await
+            {
+                Either::First(Ok(measurement)) => comms_to_host.send(measurement.into()).await,
+                Either::First(Err(TimeoutError)) => continue 'inner,
+                Either::Second(new_finish_time) => finish_time = new_finish_time,
+            }
+        }
+    }
+}
 
 #[embassy_executor::task]
 async fn reactor_task(
     comms_from_host: &'static CommsFromHost,
     comms_to_host: &'static CommsToHost,
-    mut light_readings_sub: LightReadingsSubscriber,
 ) {
     loop {
         match comms_from_host.receive().await {
@@ -28,25 +59,17 @@ async fn reactor_task(
                 comms_to_host.send(status).await;
             }
             HostToDevice::MeasureBackground { duration_ms } => {
-                if duration_ms > MAX_MEASUREMENT_DURATION_MS {
+                if Duration::from_millis(duration_ms as u64) > MAX_BG_MEASUREMENT_DURATION {
                     defmt::error!(
                         "can't measure background for {}ms, max duration is {}ms",
                         duration_ms,
-                        MAX_MEASUREMENT_DURATION_MS
+                        MAX_BG_MEASUREMENT_DURATION.as_millis()
                     );
                     continue;
                 }
 
-                // I can do smarter things here with a select! and make it impossible to
-                // block forever on waiting for a new ADC reading, but I'd rather do go simple
-                // todo: maybe do something with a deadline/future combinator?
-                // todo: what to do when a new command arrives while I'm looping here?
-                let finish = Instant::now().as_millis() + duration_ms as u64;
-                while Instant::now().as_millis() < finish {
-                    // todo: maybe log tick difference to control async transmission delay?
-                    let measurement = light_readings_sub.next_message_pure().await;
-                    comms_to_host.send(measurement.into()).await;
-                }
+                let new_finish = Instant::now() + Duration::from_millis(duration_ms as u64);
+                BG_FINISH_TIME_SIGNAL.signal(new_finish);
             }
             HostToDevice::SendHidEvent { .. } => {}
             HostToDevice::UpdateFirmware { .. } => {
@@ -63,9 +86,6 @@ pub fn init(
     comms_to_host: &'static CommsToHost,
     light_readings_sub: LightReadingsSubscriber,
 ) {
-    spawner.must_spawn(reactor_task(
-        comms_from_host,
-        comms_to_host,
-        light_readings_sub,
-    ));
+    spawner.must_spawn(bg_measurement_loop_task(comms_to_host, light_readings_sub));
+    spawner.must_spawn(reactor_task(comms_from_host, comms_to_host));
 }

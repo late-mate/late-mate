@@ -18,14 +18,14 @@ pub const MAX_LIGHT_LEVEL: u32 = (1 << 24) - 1;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LightReading {
-    tick: Instant,
+    instant: Instant,
     reading: u32,
 }
 
 impl From<LightReading> for DeviceToHost {
     fn from(value: LightReading) -> Self {
         DeviceToHost::LightLevel {
-            tick: value.tick.as_ticks(),
+            microsecond: value.instant.as_micros(),
             light_level: value.reading,
         }
     }
@@ -34,7 +34,7 @@ impl From<LightReading> for DeviceToHost {
 impl LightReading {
     fn current(reading: u32) -> Self {
         Self {
-            tick: Instant::now(),
+            instant: Instant::now(),
             reading,
         }
     }

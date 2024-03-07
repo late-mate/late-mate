@@ -17,7 +17,13 @@ pub struct Status {
 pub enum DeviceToHost {
     // see https://docs.rs/embassy-time/latest/embassy_time/
     // and https://docs.rs/embassy-time/latest/embassy_time/struct.Instant.html
-    LightLevel { tick: u64, light_level: u32 },
-    HidReport { tick: u64, hid_report: HidReport },
+    LightLevel {
+        microsecond: u64,
+        light_level: u32,
+    },
+    HidReport {
+        microsecond: u64,
+        hid_report: HidReport,
+    },
     Status(Status),
 }
