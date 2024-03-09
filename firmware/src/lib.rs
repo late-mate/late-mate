@@ -16,7 +16,8 @@ use embassy_rp::usb::Driver as UsbDriver;
 use embassy_sync::channel::Channel;
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
-use late_mate_comms::{DeviceToHost, HostToDevice};
+use embassy_sync::signal::Signal;
+use late_mate_comms::{DeviceToHost, HidReport, HostToDevice};
 
 pub const HARDWARE_VERSION: u8 = 1;
 // todo: maybe just use a git hash?
@@ -72,6 +73,9 @@ type LightReadingsPublisher = pubsub::Publisher<
 >;
 pub static LIGHT_READINGS: LightReadings = PubSubChannel::new();
 
+type HidSignal = Signal<RawMutex, HidReport>;
+pub static HID_SIGNAL: HidSignal = Signal::new();
+
 pub async fn main(spawner: Spawner) {
     info!("Late Mate is booting up");
 
@@ -97,13 +101,21 @@ pub async fn main(spawner: Spawner) {
     );
 
     let usb_driver = UsbDriver::new(p.USB, UsbIrqs);
-    usb::init(&spawner, usb_driver, &COMMS_FROM_HOST, &COMMS_TO_HOST);
+
+    usb::init(
+        &spawner,
+        usb_driver,
+        &COMMS_FROM_HOST,
+        &COMMS_TO_HOST,
+        &HID_SIGNAL,
+    );
 
     reactor::init(
         &spawner,
         &COMMS_FROM_HOST,
         &COMMS_TO_HOST,
         LIGHT_READINGS.subscriber().unwrap(),
+        &HID_SIGNAL,
     );
     //
     // let adc = adc::Adc::new(p.ADC, AdcIrqs, adc::Config::default());
@@ -120,5 +132,6 @@ pub async fn main(spawner: Spawner) {
 // TODO:
 // - LED reflecting the light level
 // - USB
+// - temperature in the status report
 
 // TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu

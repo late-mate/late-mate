@@ -7,7 +7,9 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.1", features = ["derive"] }
-tokio = { version = "1.36.0", features = ["rt", "macros", "io-util", "time"] }
+tokio = { version = "1.36.0", features = ["rt", "macros", "io-util", "time", "sync"] }
 tokio-serial = "5.4.4"
 
 late-mate-comms = { path = "../late-mate-comms" }
+thiserror = "1.0.57"
+anyhow = { version = "1.0.80", features = ["backtrace"] }

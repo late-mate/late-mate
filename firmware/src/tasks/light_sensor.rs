@@ -13,8 +13,8 @@ use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_time::{Instant, Timer};
 use late_mate_comms::DeviceToHost;
 
-// aassuming a saturating 24-bit ADC
-pub const MAX_LIGHT_LEVEL: u32 = (1 << 24) - 1;
+// the measured max value
+pub const MAX_LIGHT_LEVEL: u32 = (1 << 23) - 1;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LightReading {

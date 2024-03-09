@@ -3,11 +3,10 @@ use crate::{CommsFromHost, CommsToHost};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 
-use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State as CdcState};
+use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
 use embassy_usb::Builder;
 use late_mate_comms::{
-    encode, CrcCobsAccumulator, FeedResult, HostToDevice,
-    MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
+    encode, CrcCobsAccumulator, FeedResult, HostToDevice, MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
 };
 use static_cell::StaticCell;
 
@@ -81,8 +80,8 @@ pub fn init(
     from_host: &'static CommsFromHost,
     to_host: &'static CommsToHost,
 ) {
-    static CDC_STATE: StaticCell<CdcState> = StaticCell::new();
-    let cdc_state: &'static mut CdcState = CDC_STATE.init(CdcState::new());
+    static CDC_STATE: StaticCell<State> = StaticCell::new();
+    let cdc_state: &'static mut State = CDC_STATE.init(State::new());
 
     let class = CdcAcmClass::new(builder, cdc_state, USB_MAX_PACKET_SIZE);
 

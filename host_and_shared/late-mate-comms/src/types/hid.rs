@@ -1,4 +1,5 @@
 use postcard::experimental::max_size::MaxSize;
+use usbd_hid::descriptor::SerializedDescriptor;
 
 // usbd_hid doesn't implement Deserialize and Eq/PartialEq, so here we use our own
 // structs
@@ -46,4 +47,13 @@ impl From<KeyboardReport> for usbd_hid::descriptor::KeyboardReport {
 pub enum HidReport {
     Mouse(MouseReport),
     Keyboard(KeyboardReport),
+}
+
+impl HidReport {
+    pub fn descriptor(&self) -> &'static [u8] {
+        match self {
+            HidReport::Mouse(_) => usbd_hid::descriptor::MouseReport::desc(),
+            HidReport::Keyboard(_) => usbd_hid::descriptor::KeyboardReport::desc(),
+        }
+    }
 }

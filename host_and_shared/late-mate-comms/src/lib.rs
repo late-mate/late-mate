@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_basic_roundtrip() {
         let packet = DeviceToHost::HidReport {
-            tick: 17,
+            microsecond: 17,
             hid_report: HidReport::Mouse(MouseReport {
                 buttons: 0,
                 x: 15,
