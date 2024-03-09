@@ -11,4 +11,5 @@ crc = "3.0.1"
 defmt = "0.3.6"
 postcard = { version = "1.0.8", default-features = false, features = ["use-crc", "experimental-derive"] }
 serde = { version = "1.0.197", default-features = false, features = ["derive"] }
-usbd-hid = "0.7.0"
+# must track embassy's version
+usbd-hid = "0.6.1"

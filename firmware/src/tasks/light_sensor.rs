@@ -54,6 +54,7 @@ async fn light_sensor_task(
     cmd_buf[0] = Command::StartOrSync.into();
     spi.write(&cmd_buf).await.unwrap();
 
+    defmt::info!("Starting light sensor loop");
     loop {
         drdy.wait_for_low().await;
         let mut rx_buf = [0u8; 3];

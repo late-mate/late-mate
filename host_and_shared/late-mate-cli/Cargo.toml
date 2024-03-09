@@ -13,3 +13,4 @@ tokio-serial = "5.4.4"
 late-mate-comms = { path = "../late-mate-comms" }
 thiserror = "1.0.57"
 anyhow = { version = "1.0.80", features = ["backtrace"] }
+usbd-hid = "0.7.0"

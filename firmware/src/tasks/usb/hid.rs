@@ -18,14 +18,24 @@ async fn hid_sender_task(
     mut mouse_writer: HidWriter<'static, Driver<'static, USB>, 64>,
     mut keyboard_writer: HidWriter<'static, Driver<'static, USB>, 64>,
 ) {
+    defmt::info!("Starting USB HID sender loop");
     loop {
         let report = hid_signal.wait().await;
-        let writer = match &report {
-            HidReport::Mouse(_) => &mut mouse_writer,
-            HidReport::Keyboard(_) => &mut keyboard_writer,
-        };
         // todo: error handling
-        writer.write(report.descriptor()).await.unwrap();
+        // todo: I'm sure this could be cleaner
+        // todo: pressed button must be reported as released, too
+        // todo: replace direct HidReport structs with something custom (this should also allow
+        //       me to remove 0.6.1 constraint on usbd_hid, it seems that the examples use 0.7.0)
+        match &report {
+            HidReport::Mouse(mouse_report) => {
+                let usbd_report = usbd_hid::descriptor::MouseReport::from(*mouse_report);
+                mouse_writer.write_serialize(&usbd_report).await.unwrap();
+            }
+            HidReport::Keyboard(keyboard_report) => {
+                let usbd_report = usbd_hid::descriptor::KeyboardReport::from(*keyboard_report);
+                keyboard_writer.write_serialize(&usbd_report).await.unwrap();
+            }
+        };
         to_host
             .send(DeviceToHost::HidReport {
                 microsecond: Instant::now().as_micros(),

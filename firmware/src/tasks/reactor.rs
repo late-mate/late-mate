@@ -70,6 +70,7 @@ async fn reactor_task(
                 BG_FINISH_TIME_SIGNAL
                     .signal(Instant::now() + Duration::from_millis(duration_ms as u64));
 
+                defmt::info!("signalling a new hid event");
                 hid_signal.signal(hid_event);
             }
 

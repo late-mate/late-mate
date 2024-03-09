@@ -453,6 +453,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-serial",
+ "usbd-hid 0.7.0",
 ]
 
 [[package]]
@@ -464,7 +465,7 @@ dependencies = [
  "defmt",
  "postcard",
  "serde",
- "usbd-hid",
+ "usbd-hid 0.6.1",
 ]
 
 [[package]]
@@ -929,6 +930,12 @@ checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
 name = "usb-device"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f6cc3adc849b5292b4075fc0d5fdcf2f24866e88e336dd27a8943090a520508"
+
+[[package]]
+name = "usb-device"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e73e438f527e567fb3982f2370967821fab4f5aea84c42e218a211dd2002b6a2"
@@ -940,13 +947,25 @@ dependencies = [
 
 [[package]]
 name = "usbd-hid"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "975bd411f4a939986751ea09992a24fa47c4d25c6ed108d04b4c2999a4fd0132"
+dependencies = [
+ "serde",
+ "ssmarshal",
+ "usb-device 0.2.9",
+ "usbd-hid-macros",
+]
+
+[[package]]
+name = "usbd-hid"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41a2d4546ca3e6a5c6a85584e5caf29feabf3ec35d6cd6b772eb35bd3cff7256"
 dependencies = [
  "serde",
  "ssmarshal",
- "usb-device",
+ "usb-device 0.3.1",
  "usbd-hid-macros",
 ]
 

@@ -20,6 +20,7 @@ async fn serial_rx_task(
     let mut cobs_acc = CrcCobsAccumulator::new();
     let mut usb_buf = [0u8; USB_MAX_PACKET_SIZE as usize];
 
+    defmt::info!("Starting USB serial RX loop");
     loop {
         // todo: error handling
         let usb_len = serial_rx.read_packet(&mut usb_buf).await.unwrap();
@@ -57,6 +58,7 @@ async fn serial_tx_task(
 ) {
     serial_tx.wait_connection().await;
 
+    defmt::info!("Starting USB serial TX loop");
     loop {
         let msg = to_host.receive().await;
 

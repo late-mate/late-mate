@@ -1,7 +1,8 @@
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context, Error};
 use clap::{Parser, Subcommand};
 use late_mate_comms::{
-    encode, CrcCobsAccumulator, DeviceToHost, FeedResult, HostToDevice, MAX_BUFFER_SIZE,
+    encode, CrcCobsAccumulator, DeviceToHost, FeedResult, HidReport, HostToDevice, KeyboardReport,
+    Status, MAX_BUFFER_SIZE,
 };
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -11,6 +12,7 @@ use tokio::time::interval;
 use tokio_serial::{
     SerialPortBuilderExt, SerialPortInfo, SerialPortType, SerialStream, UsbPortInfo,
 };
+use usbd_hid::descriptor::KeyboardUsage;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -23,6 +25,10 @@ struct Cli {
 enum Command {
     /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
     MonitorBackground,
+    /// Request status from the Late Mate device
+    Status,
+    /// Run a simulated HID event (pressing A on the keyboard) while measuring light levels
+    HidDemo { csv_filename: String },
 }
 
 fn find_serial_port() -> anyhow::Result<SerialPortInfo> {
@@ -58,9 +64,11 @@ async fn device_loop(
     loop {
         let tx_rx = tokio::select! {
             msg = device_tx_receiver.recv() => {
-                msg.ok_or(anyhow!("Unexpectedly closed tx channel")).map(TxRx::Tx)
+                dbg!(msg);
+                msg.ok_or(anyhow!("Unexpectedly closed TX channel")).map(TxRx::Tx)
             },
             rx_len = serial_stream.read(&mut usb_buf) => {
+                //dbg!();
                 rx_len.context("Error reading the serial stream").map(TxRx::RxLen)
             }
         }?;
@@ -114,8 +122,17 @@ pub async fn run() -> anyhow::Result<()> {
 
     let device_loop_future = device_loop(serial_stream, device_tx_receiver, device_rx_sender);
 
-    let command_future = match &cli.command {
-        Command::MonitorBackground => monitor_background(device_tx, device_rx),
+    // this async block is important to bring commands to the same return type
+    let command_future = async {
+        match &cli.command {
+            // it's important to clone tx here to avoid closing channels prematurely if commands
+            // drop their instances of tx
+            Command::MonitorBackground => monitor_background(device_tx.clone(), device_rx).await,
+            Command::Status => get_status(device_tx.clone(), device_rx).await,
+            Command::HidDemo { csv_filename } => {
+                hid_demo(device_tx.clone(), device_rx, csv_filename.clone()).await
+            }
+        }
     };
 
     tokio::select! {
@@ -156,6 +173,7 @@ pub async fn monitor_background(
             if let DeviceToHost::LightLevel { light_level, .. } = msg {
                 println!(
                     "{:.4}",
+                    // todo: pull max light level from the status command
                     (light_level as f64 / ((1 << 23) - 1) as f64) * 100f64
                 )
             }
@@ -167,4 +185,82 @@ pub async fn monitor_background(
         ret = request_loop_future => ret,
         ret = print_future => ret
     }
+}
+
+pub async fn get_status(
+    device_tx: mpsc::Sender<HostToDevice>,
+    mut device_rx: broadcast::Receiver<DeviceToHost>,
+) -> anyhow::Result<()> {
+    let req_future = async move {
+        device_tx
+            .send(HostToDevice::GetStatus)
+            .await
+            .context("Device TX channel was unexpectedly closed")
+    };
+    let resp_future = async move {
+        loop {
+            match device_rx.recv().await {
+                Ok(DeviceToHost::Status(status)) => return Ok(status),
+                Ok(_) => continue,
+                Err(RecvError::Lagged(_)) => continue,
+                Err(RecvError::Closed) => {
+                    return Err(anyhow!("Device RX channel was unexpectedly closed"))
+                }
+            }
+        }
+    };
+
+    match tokio::try_join!(req_future, resp_future) {
+        Ok((_, status)) => {
+            dbg!(status);
+            Ok(())
+        }
+        // have to rewrap to change the type ('Ok' branches are different)
+        Err(e) => Err(e),
+    }
+}
+
+pub async fn hid_demo(
+    device_tx: mpsc::Sender<HostToDevice>,
+    mut device_rx: broadcast::Receiver<DeviceToHost>,
+    csv_filename: String,
+) -> anyhow::Result<()> {
+    let req_future = async move {
+        device_tx
+            .send(HostToDevice::SendHidEvent {
+                hid_event: HidReport::Keyboard(KeyboardReport {
+                    modifier: 0,
+                    reserved: 0,
+                    leds: 0,
+                    keycodes: [KeyboardUsage::KeyboardAa as u8, 0, 0, 0, 0, 0],
+                }),
+                duration_ms: 100,
+            })
+            .await
+            .context("Device TX channel was unexpectedly closed")
+    };
+    req_future.await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    Ok(())
+    // let resp_future = async move {
+    //     loop {
+    //         match device_rx.recv().await {
+    //             Ok(DeviceToHost::Status(status)) => return Ok(status),
+    //             Ok(_) => continue,
+    //             Err(RecvError::Lagged(_)) => continue,
+    //             Err(RecvError::Closed) => {
+    //                 return Err(anyhow!("Device RX channel was unexpectedly closed"))
+    //             }
+    //         }
+    //     }
+    // };
+    //
+    // match tokio::try_join!(req_future, resp_future) {
+    //     Ok((_, status)) => {
+    //         dbg!(status);
+    //         Ok(())
+    //     }
+    //     // have to rewrap to change the type ('Ok' branches are different)
+    //     Err(e) => Err(e),
+    // }
 }

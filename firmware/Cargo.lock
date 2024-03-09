@@ -554,7 +554,7 @@ dependencies = [
  "embassy-usb-driver",
  "heapless 0.8.0",
  "ssmarshal",
- "usbd-hid 0.6.1",
+ "usbd-hid",
 ]
 
 [[package]]
@@ -910,7 +910,7 @@ dependencies = [
  "defmt",
  "postcard",
  "serde",
- "usbd-hid 0.7.0",
+ "usbd-hid",
 ]
 
 [[package]]
@@ -937,7 +937,7 @@ dependencies = [
  "portable-atomic",
  "postcard",
  "static_cell",
- "usbd-hid 0.7.0",
+ "usbd-hid",
 ]
 
 [[package]]
@@ -1027,16 +1027,7 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
- "num_enum_derive 0.5.11",
-]
-
-[[package]]
-name = "num_enum"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
-dependencies = [
- "num_enum_derive 0.6.1",
+ "num_enum_derive",
 ]
 
 [[package]]
@@ -1048,17 +1039,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "num_enum_derive"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.51",
 ]
 
 [[package]]
@@ -1150,7 +1130,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76e09694b50f89f302ed531c1f2a7569f0be5867aee4ab4f8f729bbeec0078e3"
 dependencies = [
  "arrayvec",
- "num_enum 0.5.11",
+ "num_enum",
  "paste",
 ]
 
@@ -1597,17 +1577,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f6cc3adc849b5292b4075fc0d5fdcf2f24866e88e336dd27a8943090a520508"
 
 [[package]]
-name = "usb-device"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e73e438f527e567fb3982f2370967821fab4f5aea84c42e218a211dd2002b6a2"
-dependencies = [
- "heapless 0.7.16",
- "num_enum 0.6.1",
- "portable-atomic",
-]
-
-[[package]]
 name = "usbd-hid"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1615,19 +1584,7 @@ checksum = "975bd411f4a939986751ea09992a24fa47c4d25c6ed108d04b4c2999a4fd0132"
 dependencies = [
  "serde",
  "ssmarshal",
- "usb-device 0.2.9",
- "usbd-hid-macros",
-]
-
-[[package]]
-name = "usbd-hid"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41a2d4546ca3e6a5c6a85584e5caf29feabf3ec35d6cd6b772eb35bd3cff7256"
-dependencies = [
- "serde",
- "ssmarshal",
- "usb-device 0.3.1",
+ "usb-device",
  "usbd-hid-macros",
 ]
 
