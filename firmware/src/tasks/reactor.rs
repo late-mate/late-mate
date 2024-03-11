@@ -63,6 +63,13 @@ async fn reactor_task(
                     .signal(Instant::now() + Duration::from_millis(duration_ms as u64));
             }
 
+            // todo: buffer the values to avoid affecting the measurements
+            // todo: make microseconds u32 to save some RAM
+            // todo: this is an awkward command because unlike MeasureBackground it can be blocking,
+            //       and it has a hard limit, and should be synchronous so that the host could
+            //       cleanly reset/repeat
+            //       maybe it should JUST sent an event (eg for a reset), and testing should
+            //       be separate
             HostToDevice::SendHidEvent {
                 hid_event,
                 duration_ms,
@@ -70,7 +77,6 @@ async fn reactor_task(
                 BG_FINISH_TIME_SIGNAL
                     .signal(Instant::now() + Duration::from_millis(duration_ms as u64));
 
-                defmt::info!("signalling a new hid event");
                 hid_signal.signal(hid_event);
             }
 

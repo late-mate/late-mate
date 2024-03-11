@@ -15,8 +15,6 @@ pub struct Status {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum DeviceToHost {
-    // see https://docs.rs/embassy-time/latest/embassy_time/
-    // and https://docs.rs/embassy-time/latest/embassy_time/struct.Instant.html
     LightLevel {
         microsecond: u64,
         light_level: u32,

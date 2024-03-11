@@ -23,17 +23,26 @@ async fn hid_sender_task(
         let report = hid_signal.wait().await;
         // todo: error handling
         // todo: I'm sure this could be cleaner
-        // todo: pressed button must be reported as released, too
         // todo: replace direct HidReport structs with something custom (this should also allow
         //       me to remove 0.6.1 constraint on usbd_hid, it seems that the examples use 0.7.0)
         match &report {
             HidReport::Mouse(mouse_report) => {
-                let usbd_report = usbd_hid::descriptor::MouseReport::from(*mouse_report);
+                let usbd_report = MouseReport::from(*mouse_report);
                 mouse_writer.write_serialize(&usbd_report).await.unwrap();
             }
             HidReport::Keyboard(keyboard_report) => {
-                let usbd_report = usbd_hid::descriptor::KeyboardReport::from(*keyboard_report);
+                let usbd_report = KeyboardReport::from(*keyboard_report);
                 keyboard_writer.write_serialize(&usbd_report).await.unwrap();
+                // immediately release the keypress
+                keyboard_writer
+                    .write_serialize(&KeyboardReport {
+                        modifier: 0,
+                        reserved: 0,
+                        leds: 0,
+                        keycodes: [0; 6],
+                    })
+                    .await
+                    .unwrap();
             }
         };
         to_host

@@ -1,14 +1,16 @@
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, Context};
 use clap::{Parser, Subcommand};
 use late_mate_comms::{
     encode, CrcCobsAccumulator, DeviceToHost, FeedResult, HidReport, HostToDevice, KeyboardReport,
-    Status, MAX_BUFFER_SIZE,
+    MAX_BUFFER_SIZE,
 };
+use std::fs::File;
+use std::io::Write;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{broadcast, mpsc};
-use tokio::time::interval;
+use tokio::time::{interval, sleep, timeout};
 use tokio_serial::{
     SerialPortBuilderExt, SerialPortInfo, SerialPortType, SerialStream, UsbPortInfo,
 };
@@ -64,7 +66,7 @@ async fn device_loop(
     loop {
         let tx_rx = tokio::select! {
             msg = device_tx_receiver.recv() => {
-                dbg!(msg);
+                //dbg!(msg);
                 msg.ok_or(anyhow!("Unexpectedly closed TX channel")).map(TxRx::Tx)
             },
             rx_len = serial_stream.read(&mut usb_buf) => {
@@ -225,6 +227,8 @@ pub async fn hid_demo(
     mut device_rx: broadcast::Receiver<DeviceToHost>,
     csv_filename: String,
 ) -> anyhow::Result<()> {
+    sleep(Duration::from_secs(3)).await;
+
     let req_future = async move {
         device_tx
             .send(HostToDevice::SendHidEvent {
@@ -234,33 +238,59 @@ pub async fn hid_demo(
                     leds: 0,
                     keycodes: [KeyboardUsage::KeyboardAa as u8, 0, 0, 0, 0, 0],
                 }),
-                duration_ms: 100,
+                duration_ms: 300,
             })
             .await
             .context("Device TX channel was unexpectedly closed")
     };
-    req_future.await;
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    Ok(())
-    // let resp_future = async move {
-    //     loop {
-    //         match device_rx.recv().await {
-    //             Ok(DeviceToHost::Status(status)) => return Ok(status),
-    //             Ok(_) => continue,
-    //             Err(RecvError::Lagged(_)) => continue,
-    //             Err(RecvError::Closed) => {
-    //                 return Err(anyhow!("Device RX channel was unexpectedly closed"))
-    //             }
-    //         }
-    //     }
-    // };
-    //
-    // match tokio::try_join!(req_future, resp_future) {
-    //     Ok((_, status)) => {
-    //         dbg!(status);
-    //         Ok(())
-    //     }
-    //     // have to rewrap to change the type ('Ok' branches are different)
-    //     Err(e) => Err(e),
-    // }
+    let resp_future = async move {
+        let mut data: Vec<(&'static str, u64, u32)> = vec![];
+        loop {
+            // todo: make this sane
+            match timeout(Duration::from_millis(100), device_rx.recv()).await {
+                Ok(Ok(DeviceToHost::LightLevel {
+                    microsecond,
+                    light_level,
+                })) => data.push(("light_level", microsecond, light_level)),
+                Ok(Ok(DeviceToHost::HidReport { microsecond, .. })) => {
+                    data.push(("hid_event", microsecond, 0))
+                }
+                Ok(Ok(_)) => continue,
+                Ok(Err(RecvError::Lagged(_))) => continue,
+                Ok(Err(RecvError::Closed)) => {
+                    let result: anyhow::Result<Vec<(&'static str, u64, u32)>> =
+                        Err(anyhow!("Device RX channel was unexpectedly closed"));
+                    return result;
+                }
+                Err(_) => return Ok(data),
+            }
+        }
+    };
+
+    match tokio::try_join!(req_future, resp_future) {
+        Ok((_, data)) => {
+            dbg!(&data);
+            let mut file = File::create(csv_filename).context("CSV file creation error")?;
+            let mut start: Option<u64> = None;
+            for (kind, microsecond, light_level) in data {
+                match start {
+                    None if kind == "hid_event" => start = Some(microsecond),
+                    None => continue,
+                    Some(start_microsecond) => {
+                        writeln!(
+                            file,
+                            "{:.4},{:.4}",
+                            (microsecond - start_microsecond) as f64 / 1000f64,
+                            light_level as f64 / ((1 << 23) - 1) as f64
+                        )
+                        .context("CSV file write error")?;
+                    }
+                }
+            }
+            file.flush()?;
+            Ok(())
+        }
+        // have to rewrap to change the type ('Ok' branches are different)
+        Err(e) => Err(e),
+    }
 }
