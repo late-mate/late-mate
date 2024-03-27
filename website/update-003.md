@@ -3,13 +3,7 @@ Update 003 — Houston, we have results!
 
 Last week Dan sent me the PCB, and with a little soldering, we got our first prototype. It measures!
 
-Our typical setup looks like this:
-
-![](update-003/setup.jpeg)
-
-In fact, that clamp turned out to be a very convenient way to mount Late Mate. We are now thinking about whether we should include it in the package (maybe not).
-
-Now, we take an app, like Kitty. Increase font size to some unreasonable size (for now, I hope you won’t need to do that).
+This is how it works. We take an app, like Kitty. Increase font size to some unreasonable size (for now, I hope you won’t need to do that).
 
 Then we make our device pretend it’s a keyboard and produce USB events. It first “types” Spacebar and then Backspace:
 
@@ -19,7 +13,13 @@ Then we position Late Mate Prototype Mark I (tm) measuring device on top of it:
 
 ![](update-003/position.webp)
 
-And we observe the brightness change. This gets us a graph like this:
+How? I’m glad you asked. Currently, like this:
+
+![](update-003/setup.jpeg)
+
+Yes, it looks horrible. But it’s also surprisingly convenient! Until the first cracked screen, that is. So we will probably not include the clamp in the package.
+
+Finally, we observe the brightness change. This gets us a graph like this:
 
 ![](update-003/dell_normal.webp) 
 
@@ -64,7 +64,7 @@ Interesting observations:
 
 - Apple Terminal has two peaks about 40 ms apart. The reasons for that are unknown.
 
-Another thing we learned is that the Macbook Pro's built-in XDR Display seems to modulate brightness. It’s not as smooth and constant as I get on my Dell, instead, it’s going up and down roughly every ms:
+Another thing we learned is that the Macbook Pro's built-in XDR Display seems to modulate brightness. It’s not as smooth and constant as I get on my Dell, instead, it’s going up and down roughly every ms (or more often, we only sample at 2kHz):
 
 ![](update-003/400_nits.webp)
 
@@ -78,6 +78,6 @@ But of course, you don’t run UI at 1600 nits. That presents us with a bit of a
 
 (it’s hard to see but there’s a keypress in there).
 
-Well, it can only mean one thing: we have something to work on! Subscribe for even more unexplainable results!
+Well, it can only mean one thing: we have something to work on! Subscribe for even more unexplainable results. And, eventually, pre-orders.
 
 Bye-e!

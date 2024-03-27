@@ -33,15 +33,7 @@
 
 <p>Last week Dan sent me the PCB, and with a little soldering, we got our first prototype. It measures!</p>
 
-<p>Our typical setup looks like this:</p>
-
-<figure>
-<img src="update-003/setup.jpeg" />
-</figure>
-
-<p>In fact, that clamp turned out to be a very convenient way to mount Late Mate. We are now thinking about whether we should include it in the package (maybe not).</p>
-
-<p>Now, we take an app, like Kitty. Increase font size to some unreasonable size (for now, I hope you won’t need to do that).</p>
+<p>This is how it works. We take an app, like Kitty. Increase font size to some unreasonable size (for now, I hope you won’t need to do that).</p>
 
 <p>Then we make our device pretend it’s a keyboard and produce USB events. It first “types” Spacebar and then Backspace:</p>
 
@@ -55,7 +47,15 @@
 <img src="update-003/position.webp" />
 </figure>
 
-<p>And we observe the brightness change. This gets us a graph like this:</p>
+<p>How? I’m glad you asked. Currently, like this:</p>
+
+<figure>
+<img src="update-003/setup.jpeg" />
+</figure>
+
+<p>Yes, it looks horrible. But it’s also surprisingly convenient! Until the first cracked screen, that is. So we will probably not include the clamp in the package.</p>
+
+<p>Finally, we observe the brightness change. This gets us a graph like this:</p>
 
 <figure>
 <img src="update-003/dell_normal.webp" />
@@ -111,7 +111,7 @@
 <li><p>Apple Terminal has two peaks about 40 ms apart. The reasons for that are unknown.</p></li>
 </ul>
 
-<p>Another thing we learned is that the Macbook Pro's built-in XDR Display seems to modulate brightness. It’s not as smooth and constant as I get on my Dell, instead, it’s going up and down roughly every ms:</p>
+<p>Another thing we learned is that the Macbook Pro's built-in XDR Display seems to modulate brightness. It’s not as smooth and constant as I get on my Dell, instead, it’s going up and down roughly every ms (or more often, we only sample at 2kHz):</p>
 
 <figure>
 <img src="update-003/400_nits.webp" />
@@ -131,9 +131,17 @@
 
 <p>(it’s hard to see but there’s a keypress in there).</p>
 
-<p>Well, it can only mean one thing: we have something to work on! Subscribe for even more unexplainable results!</p>
+<p>Well, it can only mean one thing: we have something to work on! Subscribe for even more unexplainable results. And, eventually, pre-orders.</p>
 
 <p>Bye-e!</p>
+
+<form action="https://buttondown.email/api/emails/embed-subscribe/late-mate" method="post" target="popupwindow" onsubmit="onSubscribeSubmit()" class="embeddable-buttondown-form">
+  <div>
+    <input type="email" name="email" placeholder="Your email">
+    <input type="submit" value="Subscribe" class="plausible-event-name=Subscribe">
+  </div>
+  <p>No spam. Unsubscribe at any time</p>
+</form>
 
     </main>
 
