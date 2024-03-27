@@ -1,20 +1,24 @@
-use crate::HidReport;
+use crate::HidRequest;
 use postcard::experimental::max_size::MaxSize;
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+pub struct MeasureFollowup {
+    pub after_ms: u16,
+    pub hid_request: HidRequest,
+}
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum HostToDevice {
     GetStatus,
+    // can be called repeatedly with overlapping duration, works as a keepalive
     MeasureBackground {
-        duration_ms: u32,
+        duration_ms: u16,
     },
-    // reset needs reports too to make sure that the light level comes back to the baseline
-    SendHidEvent {
-        hid_event: HidReport,
-        duration_ms: u32,
-    },
-    // note: enum has to allocate space for the largest member, so it can't be included
-    //       in the enum itself (regardless of allocation issues)
-    UpdateFirmware {
-        length: u32,
+    SendHidReport(HidRequest),
+    Measure {
+        // must be less than 1000
+        duration_ms: u16,
+        start: HidRequest,
+        followup: Option<MeasureFollowup>,
     },
 }

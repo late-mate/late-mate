@@ -1,5 +1,5 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
-use crate::{CommsToHost, HidSignal};
+use crate::{CommsToHost, HidAckKind, HidSignal, MeasurementBuffer};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
@@ -7,7 +7,7 @@ use embassy_time::Instant;
 
 use embassy_usb::class::hid::{Config, HidWriter, State};
 use embassy_usb::Builder;
-use late_mate_comms::{DeviceToHost, HidReport};
+use late_mate_comms::{DeviceToHost, HidReport, MeasurementEvent};
 use static_cell::StaticCell;
 use usbd_hid::descriptor::{KeyboardReport, MouseReport, SerializedDescriptor};
 
@@ -17,40 +17,34 @@ async fn hid_sender_task(
     to_host: &'static CommsToHost,
     mut mouse_writer: HidWriter<'static, Driver<'static, USB>, 64>,
     mut keyboard_writer: HidWriter<'static, Driver<'static, USB>, 64>,
+    measurement_buffer: &'static MeasurementBuffer,
 ) {
     defmt::info!("Starting USB HID sender loop");
+
     loop {
-        let report = hid_signal.wait().await;
+        let (request, ack) = hid_signal.wait().await;
         // todo: error handling
-        // todo: I'm sure this could be cleaner
-        // todo: replace direct HidReport structs with something custom (this should also allow
-        //       me to remove 0.6.1 constraint on usbd_hid, it seems that the examples use 0.7.0)
-        match &report {
-            HidReport::Mouse(mouse_report) => {
-                let usbd_report = MouseReport::from(*mouse_report);
-                mouse_writer.write_serialize(&usbd_report).await.unwrap();
-            }
-            HidReport::Keyboard(keyboard_report) => {
-                let usbd_report = KeyboardReport::from(*keyboard_report);
-                keyboard_writer.write_serialize(&usbd_report).await.unwrap();
-                // immediately release the keypress
-                keyboard_writer
-                    .write_serialize(&KeyboardReport {
-                        modifier: 0,
-                        reserved: 0,
-                        leds: 0,
-                        keycodes: [0; 6],
-                    })
-                    .await
-                    .unwrap();
-            }
+        let hid_write_result = match &request.report {
+            HidReport::Mouse(r) => mouse_writer.write_serialize(&r.to_usbd_hid()).await,
+            HidReport::Keyboard(r) => keyboard_writer.write_serialize(&r.to_usbd_hid()).await,
         };
-        to_host
-            .send(DeviceToHost::HidReport {
-                microsecond: Instant::now().as_micros(),
-                hid_report: report,
-            })
-            .await;
+        if let Err(e) = hid_write_result {
+            defmt::error!("HID write error: {:?}", e);
+            continue;
+        }
+        match ack {
+            HidAckKind::Immediate => {
+                to_host.send(DeviceToHost::HidReportSent(request.id)).await;
+            }
+            HidAckKind::Buffered => {
+                let reported_at = Instant::now();
+                let mut guard = measurement_buffer.lock().await;
+                guard
+                    .as_mut()
+                    .expect("measurement buffer must exist to buffer a HID report ack")
+                    .store(reported_at, MeasurementEvent::HidReport(request.id));
+            }
+        }
     }
 }
 
@@ -75,6 +69,7 @@ pub fn init(
     builder: &mut Builder<'static, Driver<'static, USB>>,
     to_host: &'static CommsToHost,
     hid_signal: &'static HidSignal,
+    measurement_buffer: &'static MeasurementBuffer,
 ) {
     static MOUSE_STATE: StaticCell<State> = StaticCell::new();
     static KEYBOARD_STATE: StaticCell<State> = StaticCell::new();
@@ -87,5 +82,6 @@ pub fn init(
         to_host,
         mouse_writer,
         keyboard_writer,
+        measurement_buffer,
     ));
 }

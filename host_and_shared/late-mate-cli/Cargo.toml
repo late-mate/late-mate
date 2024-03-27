@@ -3,14 +3,12 @@ name = "late-mate-cli"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-clap = { version = "4.5.1", features = ["derive"] }
-tokio = { version = "1.36.0", features = ["rt", "macros", "io-util", "time", "sync"] }
-tokio-serial = "5.4.4"
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt", "macros", "io-util", "time", "sync"] }
+tokio-serial = "5"
 
 late-mate-comms = { path = "../late-mate-comms" }
-thiserror = "1.0.57"
-anyhow = { version = "1.0.80", features = ["backtrace"] }
-usbd-hid = "0.7.0"
+thiserror = "1"
+anyhow = { version = "1", features = ["backtrace"] }
+usbd-hid = "0.7"

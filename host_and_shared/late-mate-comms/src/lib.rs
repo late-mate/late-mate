@@ -2,9 +2,13 @@
 
 mod types;
 
-pub use crate::types::device_to_host::{DeviceToHost, Status, Version};
-pub use crate::types::hid::{HidReport, KeyboardReport, MouseReport};
-pub use crate::types::host_to_device::HostToDevice;
+pub use crate::types::device_to_host::{
+    DeviceToHost, Measurement, MeasurementEvent, Status, Version,
+};
+pub use crate::types::hid::{
+    HidReport, HidRequest, HidRequestId as HidReportId, KeyboardReport, MouseReport,
+};
+pub use crate::types::host_to_device::{HostToDevice, MeasureFollowup};
 use postcard::de_flavors::crc::from_bytes_u16;
 use postcard::experimental::max_size::MaxSize;
 use postcard::ser_flavors::crc::to_slice_u16;
@@ -175,15 +179,13 @@ mod tests {
 
     #[test]
     fn test_basic_roundtrip() {
-        let packet = DeviceToHost::HidReport {
-            microsecond: 17,
-            hid_report: HidReport::Mouse(MouseReport {
-                buttons: 0,
-                x: 15,
-                y: 14,
-                wheel: 2,
-                pan: 0,
-            }),
+        let packet = DeviceToHost::BufferedMeasurement {
+            measurement: Measurement {
+                microsecond: 17,
+                event: MeasurementEvent::LightLevel(42),
+            },
+            idx: 5,
+            total: 10,
         };
         let buffer = &mut [0u8; MAX_BUFFER_SIZE];
         let cobs_len = encode(&packet, buffer);

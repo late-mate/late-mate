@@ -6,18 +6,22 @@ use defmt::info;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 
+mod measurement_buffer;
 mod tasks;
 
+use crate::measurement_buffer::Buffer;
 use crate::tasks::light_sensor::LightReading;
 use crate::tasks::{light_sensor, reactor, usb};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
 use embassy_sync::channel::Channel;
+use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
-use late_mate_comms::{DeviceToHost, HidReport, HostToDevice};
+
+use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice};
 
 pub const HARDWARE_VERSION: u8 = 1;
 // todo: maybe just use a git hash?
@@ -45,8 +49,8 @@ pub static COMMS_FROM_HOST: CommsFromHost = Channel::new();
 pub static COMMS_TO_HOST: CommsToHost = Channel::new();
 
 const LIGHT_READINGS_N_BUFFERED: usize = 1;
-// reactor (for reporting back to the host) and LED
-const LIGHT_READINGS_MAX_SUBS: usize = 2;
+// reactor x2 (in measurements and in background monitoring) and LED x1
+const LIGHT_READINGS_MAX_SUBS: usize = 3;
 const LIGHT_READINGS_MAX_PUBS: usize = 1;
 type LightReadings = PubSubChannel<
     RawMutex,
@@ -73,8 +77,16 @@ type LightReadingsPublisher = pubsub::Publisher<
 >;
 pub static LIGHT_READINGS: LightReadings = PubSubChannel::new();
 
-type HidSignal = Signal<RawMutex, HidReport>;
+pub enum HidAckKind {
+    Immediate,
+    Buffered,
+}
+
+pub type HidSignal = Signal<RawMutex, (HidRequest, HidAckKind)>;
 pub static HID_SIGNAL: HidSignal = Signal::new();
+
+pub type MeasurementBuffer = Mutex<RawMutex, Option<Buffer>>;
+pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(None);
 
 pub async fn main(spawner: Spawner) {
     info!("Late Mate is booting up");
@@ -108,6 +120,7 @@ pub async fn main(spawner: Spawner) {
         &COMMS_FROM_HOST,
         &COMMS_TO_HOST,
         &HID_SIGNAL,
+        &MEASUREMENT_BUFFER,
     );
 
     reactor::init(
@@ -115,7 +128,9 @@ pub async fn main(spawner: Spawner) {
         &COMMS_FROM_HOST,
         &COMMS_TO_HOST,
         LIGHT_READINGS.subscriber().unwrap(),
+        LIGHT_READINGS.subscriber().unwrap(),
         &HID_SIGNAL,
+        &MEASUREMENT_BUFFER,
     );
     //
     // let adc = adc::Adc::new(p.ADC, AdcIrqs, adc::Config::default());

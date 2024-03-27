@@ -1,4 +1,4 @@
-use crate::{HidSignal, RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
+use crate::{HidSignal, MeasurementBuffer, RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
@@ -68,13 +68,20 @@ pub fn init(
     from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_N_BUFFERED>,
     to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_N_BUFFERED>,
     hid_signal: &'static HidSignal,
+    measurement_buffer: &'static MeasurementBuffer,
 ) {
     info!("Initializing usb");
 
     let mut builder = init_usb(driver);
 
     serial_comms::init(spawner, &mut builder, from_host, to_host);
-    hid::init(spawner, &mut builder, to_host, hid_signal);
+    hid::init(
+        spawner,
+        &mut builder,
+        to_host,
+        hid_signal,
+        measurement_buffer,
+    );
 
     device::init(spawner, builder);
 }

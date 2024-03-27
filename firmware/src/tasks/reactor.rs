@@ -1,18 +1,23 @@
-use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
+use crate::measurement_buffer::{Buffer, MAX_MEASUREMENT_DURATION};
+use crate::tasks::light_sensor::{MAX_LIGHT_LEVEL};
 use crate::{
-    CommsFromHost, CommsToHost, HidSignal, LightReadingsSubscriber, RawMutex, FIRMWARE_VERSION,
-    HARDWARE_VERSION,
+    CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, MeasurementBuffer,
+    RawMutex, FIRMWARE_VERSION, HARDWARE_VERSION,
 };
 use embassy_executor::Spawner;
-use embassy_futures::select::{select, Either};
+use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_sync::signal::Signal;
-use embassy_time::{with_timeout, Duration, Instant, TimeoutError};
-use late_mate_comms::{DeviceToHost, HostToDevice, Status, Version};
+use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
+use late_mate_comms::{
+    DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status,
+    Version,
+};
 
 // how long to wait for a new value from the ADC
 const LIGHT_READING_TIMEOUT: Duration = Duration::from_millis(10);
 
 static BG_FINISH_TIME_SIGNAL: Signal<RawMutex, Instant> = Signal::new();
+static BG_MEASUREMENT_ACTIVE: Signal<RawMutex, bool> = Signal::new();
 
 #[embassy_executor::task]
 async fn bg_measurement_loop_task(
@@ -22,6 +27,9 @@ async fn bg_measurement_loop_task(
     loop {
         let mut finish_time = BG_FINISH_TIME_SIGNAL.wait().await;
         'inner: while Instant::now() < finish_time {
+            // note: this can potentially be expensive, but also it's the simplest way to
+            //       do this, given the finish_time mutation below
+            BG_MEASUREMENT_ACTIVE.signal(true);
             match select(
                 with_timeout(
                     LIGHT_READING_TIMEOUT,
@@ -31,11 +39,19 @@ async fn bg_measurement_loop_task(
             )
             .await
             {
-                Either::First(Ok(measurement)) => comms_to_host.send(measurement.into()).await,
-                Either::First(Err(TimeoutError)) => continue 'inner,
+                Either::First(Ok(reading)) => {
+                    comms_to_host
+                        .send(DeviceToHost::CurrentLightLevel(reading.reading))
+                        .await
+                }
+                Either::First(Err(TimeoutError)) => {
+                    defmt::error!("timeout waiting for a light reading");
+                    continue 'inner;
+                }
                 Either::Second(new_finish_time) => finish_time = new_finish_time,
             }
         }
+        BG_MEASUREMENT_ACTIVE.signal(false);
     }
 }
 
@@ -43,7 +59,9 @@ async fn bg_measurement_loop_task(
 async fn reactor_task(
     comms_from_host: &'static CommsFromHost,
     comms_to_host: &'static CommsToHost,
+    mut light_readings_sub: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
+    measurement_buffer: &'static MeasurementBuffer,
 ) {
     loop {
         match comms_from_host.receive().await {
@@ -63,27 +81,118 @@ async fn reactor_task(
                     .signal(Instant::now() + Duration::from_millis(duration_ms as u64));
             }
 
-            // todo: buffer the values to avoid affecting the measurements
-            // todo: make microseconds u32 to save some RAM
-            // todo: this is an awkward command because unlike MeasureBackground it can be blocking,
-            //       and it has a hard limit, and should be synchronous so that the host could
-            //       cleanly reset/repeat
-            //       maybe it should JUST sent an event (eg for a reset), and testing should
-            //       be separate
-            HostToDevice::SendHidEvent {
-                hid_event,
-                duration_ms,
-            } => {
-                BG_FINISH_TIME_SIGNAL
-                    .signal(Instant::now() + Duration::from_millis(duration_ms as u64));
-
-                hid_signal.signal(hid_event);
+            HostToDevice::SendHidReport(hid_request) => {
+                hid_signal.signal((hid_request, HidAckKind::Immediate));
             }
 
-            HostToDevice::UpdateFirmware { .. } => {
-                defmt::error!("firmware update is not supported yet")
+            HostToDevice::Measure {
+                duration_ms,
+                start,
+                followup,
+            } => {
+                measure(
+                    comms_to_host,
+                    &mut light_readings_sub,
+                    hid_signal,
+                    measurement_buffer,
+                    duration_ms,
+                    start,
+                    followup,
+                )
+                .await;
             }
         }
+    }
+}
+
+async fn measure(
+    comms_to_host: &'static CommsToHost,
+    light_readings_sub: &mut LightReadingsSubscriber,
+    hid_signal: &'static HidSignal,
+    measurement_buffer: &'static MeasurementBuffer,
+    duration_ms: u16,
+    start: HidRequest,
+    followup: Option<MeasureFollowup>,
+) {
+    if duration_ms as u64 > MAX_MEASUREMENT_DURATION.as_millis() {
+        defmt::error!(
+            "duration_ms must be lower than {}",
+            MAX_MEASUREMENT_DURATION.as_millis()
+        );
+        return;
+    }
+
+    // cancel background measurements
+    BG_FINISH_TIME_SIGNAL.signal(Instant::now());
+    while BG_MEASUREMENT_ACTIVE.wait().await {
+        // wait for the background measurement loop to finish
+    }
+
+    let started_at = Instant::now();
+    measurement_buffer
+        .lock()
+        .await
+        .replace(Buffer::new(started_at));
+
+    // todo: maybe change the signal to a channel?
+    hid_signal.signal((start, HidAckKind::Buffered));
+
+    // if there is no followup, add a dummy followup duration
+    // that's definitely longer than the measurement
+    let followup_at = started_at
+        + followup.map_or(Duration::from_secs(60), |f| {
+            Duration::from_millis(f.after_ms as u64)
+        });
+    let finish_at = started_at + Duration::from_millis(duration_ms as u64);
+
+    loop {
+        match select3(
+            with_timeout(
+                LIGHT_READING_TIMEOUT,
+                light_readings_sub.next_message_pure(),
+            ),
+            Timer::at(followup_at),
+            Timer::at(finish_at),
+        )
+        .await
+        {
+            Either3::First(Ok(light_reading)) => {
+                let mut guard = measurement_buffer.lock().await;
+                guard
+                    .as_mut()
+                    .expect("measurement buffer must exist to store a measurement")
+                    .store(light_reading.instant, light_reading.into());
+            }
+            Either3::First(Err(TimeoutError)) => {
+                defmt::error!("timeout waiting for a light reading during measurement");
+                return;
+            }
+            Either3::Second(_) => {
+                hid_signal.signal((
+                    followup
+                        .expect("can only happen if followup is Some")
+                        .hid_request,
+                    HidAckKind::Buffered,
+                ));
+            }
+            Either3::Third(_) => break,
+        }
+    }
+
+    let mut guard = measurement_buffer.lock().await;
+    let buffer = guard
+        .take()
+        .expect("measurement buffer must exist after a measurement");
+    let total = buffer.measurements.len() as u16;
+    for (idx, measurement) in buffer.measurements.into_iter().enumerate() {
+        let idx = idx as u16;
+        comms_to_host
+            .send(DeviceToHost::BufferedMeasurement {
+                measurement,
+                idx,
+                total,
+            })
+            .await;
     }
 }
 
@@ -92,9 +201,20 @@ pub fn init(
     spawner: &Spawner,
     comms_from_host: &'static CommsFromHost,
     comms_to_host: &'static CommsToHost,
-    light_readings_sub: LightReadingsSubscriber,
+    light_readings_sub_bg: LightReadingsSubscriber,
+    light_readings_sub_measure: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
+    measurement_buffer: &'static MeasurementBuffer,
 ) {
-    spawner.must_spawn(bg_measurement_loop_task(comms_to_host, light_readings_sub));
-    spawner.must_spawn(reactor_task(comms_from_host, comms_to_host, hid_signal));
+    spawner.must_spawn(bg_measurement_loop_task(
+        comms_to_host,
+        light_readings_sub_bg,
+    ));
+    spawner.must_spawn(reactor_task(
+        comms_from_host,
+        comms_to_host,
+        light_readings_sub_measure,
+        hid_signal,
+        measurement_buffer,
+    ));
 }

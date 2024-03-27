@@ -4,30 +4,26 @@ use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
     Vref,
 };
-use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Input, Pull};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, SPI0};
 use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_time::{Instant, Timer};
-use late_mate_comms::DeviceToHost;
+use late_mate_comms::MeasurementEvent;
 
 // the measured max value
 pub const MAX_LIGHT_LEVEL: u32 = (1 << 23) - 1;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LightReading {
-    instant: Instant,
-    reading: u32,
+    pub instant: Instant,
+    pub reading: u32,
 }
 
-impl From<LightReading> for DeviceToHost {
-    fn from(value: LightReading) -> Self {
-        DeviceToHost::LightLevel {
-            microsecond: value.instant.as_micros(),
-            light_level: value.reading,
-        }
+impl From<LightReading> for MeasurementEvent {
+    fn from(reading: LightReading) -> Self {
+        Self::LightLevel(reading.reading)
     }
 }
 
@@ -46,10 +42,10 @@ async fn light_sensor_task(
     mut drdy: Input<'static, PIN_22>,
     light_readings_pub: LightReadingsPublisher,
 ) {
-    info!("configuring the ADC");
+    defmt::info!("configuring the ADC");
     configure_adc(&mut spi).await;
 
-    info!("enabling the ADC");
+    defmt::info!("enabling the ADC");
     let mut cmd_buf = [0u8; 1];
     cmd_buf[0] = Command::StartOrSync.into();
     spi.write(&cmd_buf).await.unwrap();

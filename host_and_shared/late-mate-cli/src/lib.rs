@@ -66,11 +66,9 @@ async fn device_loop(
     loop {
         let tx_rx = tokio::select! {
             msg = device_tx_receiver.recv() => {
-                //dbg!(msg);
                 msg.ok_or(anyhow!("Unexpectedly closed TX channel")).map(TxRx::Tx)
             },
             rx_len = serial_stream.read(&mut usb_buf) => {
-                //dbg!();
                 rx_len.context("Error reading the serial stream").map(TxRx::RxLen)
             }
         }?;
@@ -172,7 +170,7 @@ pub async fn monitor_background(
                     return Err(anyhow!("Device RX channel was unexpectedly closed"))
                 }
             };
-            if let DeviceToHost::LightLevel { light_level, .. } = msg {
+            if let DeviceToHost::CurrentLightLevel(light_level) = msg {
                 println!(
                     "{:.4}",
                     // todo: pull max light level from the status command
