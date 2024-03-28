@@ -17,11 +17,12 @@ pub const MAX_PACKET_SIZE: u16 = 64;
 
 pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d, D> {
     // Create embassy-usb Config
-    // todo: get proper ones from somewhere
-    let mut config = Config::new(0x2e8a, 0x000a);
-    // todo: self evident
-    config.manufacturer = Some("Late Mate");
+    // VID/PID pair is allocated for Late Mate
+    // see https://github.com/raspberrypi/usb-pid
+    let mut config = Config::new(0x2E8A, 0x108B);
+    config.manufacturer = Some("YNO Engineering");
     config.product = Some("Late Mate test board rev1");
+    // todo: serial number allocation?
     config.serial_number = Some("06032024");
     config.max_power = 100;
     // todo: docstring suggests leaving it the default value (8)?
