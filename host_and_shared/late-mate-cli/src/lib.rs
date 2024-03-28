@@ -1,26 +1,14 @@
 mod device;
 
-use crate::device::commands::get_status;
-use crate::device::rxtx::{rx_loop, tx_loop, CrcCobsCodec};
-use crate::device::serial::find_serial_port;
+use crate::device::Device;
 use anyhow::{anyhow, Context};
 use clap::{Parser, Subcommand};
-use futures::StreamExt;
-use late_mate_comms::{
-    CrcCobsAccumulator, DeviceToHost, FeedResult, HidReport, HostToDevice, KeyboardReport,
-    MAX_BUFFER_SIZE, USB_PID, USB_VID,
-};
-use std::fs::File;
+use late_mate_comms::{DeviceToHost, HostToDevice};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{broadcast, mpsc};
-use tokio::time::{interval, sleep, timeout};
-use tokio_serial::{
-    SerialPortBuilderExt, SerialPortInfo, SerialPortType, SerialStream, UsbPortInfo,
-};
-use tokio_util::codec::Framed;
-use usbd_hid::descriptor::KeyboardUsage;
+use tokio::time::interval;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -44,28 +32,14 @@ pub async fn run() -> anyhow::Result<()> {
 
     // todo: handle more than one device being connected
 
-    let serial_port_info = find_serial_port()?;
-    let serial_stream = tokio_serial::new(serial_port_info.port_name, 115200)
-        .open_native_async()
-        .context("Serial port opening failure")?;
-
-    let serial_framed = Framed::new(serial_stream, CrcCobsCodec::new());
-    let (serial_framed_tx, serial_framed_rx) = serial_framed.split();
-
-    let (device_tx, device_tx_receiver) = mpsc::channel(4);
-    let (device_rx_sender, device_rx) = broadcast::channel(1);
-
-    let tx_loop_handle = tokio::spawn(tx_loop(serial_framed_tx, device_tx_receiver));
-    let rx_loop_handle = tokio::spawn(rx_loop(serial_framed_rx, device_rx_sender.clone()));
-
-    let device_status = get_status(device_tx.clone(), device_rx_sender.subscribe()).await?;
+    let mut device = Device::init().await?;
 
     // this async block is important to bring commands to the same return type
     let command_future = async {
         match &cli.command {
             //Command::MonitorBackground => monitor_background(device_tx, device_rx).await,
             Command::Status => {
-                dbg!(device_status);
+                dbg!(device.get_status().await);
             }
             // Command::HidDemo { csv_filename } => {
             //     hid_demo(device_tx, device_rx, csv_filename.clone()).await
