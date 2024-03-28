@@ -5,7 +5,7 @@ use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_sync::channel::Channel;
 use embassy_usb::{Builder, Config};
-use late_mate_comms::{DeviceToHost, HostToDevice};
+use late_mate_comms::{DeviceToHost, HostToDevice, USB_PID, USB_VID};
 use static_cell::StaticCell;
 
 mod device;
@@ -17,9 +17,7 @@ pub const MAX_PACKET_SIZE: u16 = 64;
 
 pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(driver: D) -> Builder<'d, D> {
     // Create embassy-usb Config
-    // VID/PID pair is allocated for Late Mate
-    // see https://github.com/raspberrypi/usb-pid
-    let mut config = Config::new(0x2E8A, 0x108B);
+    let mut config = Config::new(USB_VID, USB_PID);
     config.manufacturer = Some("YNO Engineering");
     config.product = Some("Late Mate test board rev1");
     // todo: serial number allocation?

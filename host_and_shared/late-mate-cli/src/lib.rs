@@ -1,11 +1,16 @@
+mod device;
+
+use crate::device::commands::get_status;
+use crate::device::rxtx::{rx_loop, tx_loop, CrcCobsCodec};
+use crate::device::serial::find_serial_port;
 use anyhow::{anyhow, Context};
 use clap::{Parser, Subcommand};
+use futures::StreamExt;
 use late_mate_comms::{
-    encode, CrcCobsAccumulator, DeviceToHost, FeedResult, HidReport, HostToDevice, KeyboardReport,
-    MAX_BUFFER_SIZE,
+    CrcCobsAccumulator, DeviceToHost, FeedResult, HidReport, HostToDevice, KeyboardReport,
+    MAX_BUFFER_SIZE, USB_PID, USB_VID,
 };
 use std::fs::File;
-use std::io::Write;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast::error::RecvError;
@@ -14,6 +19,7 @@ use tokio::time::{interval, sleep, timeout};
 use tokio_serial::{
     SerialPortBuilderExt, SerialPortInfo, SerialPortType, SerialStream, UsbPortInfo,
 };
+use tokio_util::codec::Framed;
 use usbd_hid::descriptor::KeyboardUsage;
 
 #[derive(Parser)]
@@ -33,83 +39,9 @@ enum Command {
     HidDemo { csv_filename: String },
 }
 
-fn find_serial_port() -> anyhow::Result<SerialPortInfo> {
-    tokio_serial::available_ports()
-        .context("Serial port enumeration error")?
-        .into_iter()
-        .find(|info| match &info.port_type {
-            SerialPortType::UsbPort(UsbPortInfo { manufacturer, .. }) => {
-                manufacturer
-                    .as_ref()
-                    .is_some_and(|s| s.as_str() == "Late Mate")
-                    && info.port_name.starts_with("/dev/cu.")
-            }
-            _ => false,
-        })
-        .ok_or(anyhow!("No appropriate serial port found"))
-}
-
-async fn device_loop(
-    mut serial_stream: SerialStream,
-    mut device_tx_receiver: mpsc::Receiver<HostToDevice>,
-    device_rx_sender: broadcast::Sender<DeviceToHost>,
-) -> anyhow::Result<()> {
-    let mut cobs_acc = CrcCobsAccumulator::new();
-    let mut usb_buf = [0u8; 64];
-    let mut msg_buf = [0u8; MAX_BUFFER_SIZE];
-
-    enum TxRx {
-        Tx(HostToDevice),
-        RxLen(usize),
-    }
-
-    loop {
-        let tx_rx = tokio::select! {
-            msg = device_tx_receiver.recv() => {
-                msg.ok_or(anyhow!("Unexpectedly closed TX channel")).map(TxRx::Tx)
-            },
-            rx_len = serial_stream.read(&mut usb_buf) => {
-                rx_len.context("Error reading the serial stream").map(TxRx::RxLen)
-            }
-        }?;
-
-        match tx_rx {
-            TxRx::Tx(msg) => {
-                let msg_len = encode(&msg, &mut msg_buf);
-
-                AsyncWriteExt::write_all(&mut serial_stream, &msg_buf[..msg_len]).await?;
-            }
-            TxRx::RxLen(rx_len) => {
-                let mut window = &usb_buf[..rx_len];
-
-                'cobs: while !window.is_empty() {
-                    window = match cobs_acc.feed::<DeviceToHost>(window) {
-                        FeedResult::Consumed => break 'cobs,
-                        FeedResult::OverFull { .. } => {
-                            return Err(anyhow!("USB buffer overflow"));
-                        }
-                        FeedResult::Error { error: e, .. } => {
-                            return Err(anyhow!("Serial packet decoding failure ({e:?})"))
-                        }
-                        FeedResult::Success { data, remaining } => {
-                            device_rx_sender.send(data)?;
-                            remaining
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// note: use single-threaded Tokio due to https://github.com/berkowski/tokio-serial/issues/69
-//       or maybe just handle it carefully on a separate thread/runtime?
-// note: https://github.com/berkowski/tokio-serial/issues/55
-// note: https://github.com/berkowski/tokio-serial/issues/37
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // todo: better device ID
     // todo: handle more than one device being connected
 
     let serial_port_info = find_serial_port()?;
@@ -117,30 +49,41 @@ pub async fn run() -> anyhow::Result<()> {
         .open_native_async()
         .context("Serial port opening failure")?;
 
+    let serial_framed = Framed::new(serial_stream, CrcCobsCodec::new());
+    let (serial_framed_tx, serial_framed_rx) = serial_framed.split();
+
     let (device_tx, device_tx_receiver) = mpsc::channel(4);
     let (device_rx_sender, device_rx) = broadcast::channel(1);
 
-    let device_loop_future = device_loop(serial_stream, device_tx_receiver, device_rx_sender);
+    let tx_loop_handle = tokio::spawn(tx_loop(serial_framed_tx, device_tx_receiver));
+    let rx_loop_handle = tokio::spawn(rx_loop(serial_framed_rx, device_rx_sender.clone()));
+
+    let device_status = get_status(device_tx.clone(), device_rx_sender.subscribe()).await?;
 
     // this async block is important to bring commands to the same return type
     let command_future = async {
         match &cli.command {
-            // it's important to clone tx here to avoid closing channels prematurely if commands
-            // drop their instances of tx
-            Command::MonitorBackground => monitor_background(device_tx.clone(), device_rx).await,
-            Command::Status => get_status(device_tx.clone(), device_rx).await,
-            Command::HidDemo { csv_filename } => {
-                hid_demo(device_tx.clone(), device_rx, csv_filename.clone()).await
+            //Command::MonitorBackground => monitor_background(device_tx, device_rx).await,
+            Command::Status => {
+                dbg!(device_status);
             }
+            // Command::HidDemo { csv_filename } => {
+            //     hid_demo(device_tx, device_rx, csv_filename.clone()).await
+            // }
+            _ => (),
         }
     };
 
-    tokio::select! {
-        // device_loop can only return an error, but if it does we should stop trying to poll
-        // the other future, it will fail anyway
-        ret = device_loop_future => ret,
-        ret = command_future => ret,
-    }
+    command_future.await;
+
+    Ok(())
+
+    // tokio::select! {
+    //     // device_loop can only return an error, but if it does we should stop trying to poll
+    //     // the other future, it will fail anyway
+    //     ret = device_loop_future => ret,
+    //     ret = command_future => ret,
+    // }
 }
 
 pub async fn monitor_background(
@@ -187,108 +130,75 @@ pub async fn monitor_background(
     }
 }
 
-pub async fn get_status(
-    device_tx: mpsc::Sender<HostToDevice>,
-    mut device_rx: broadcast::Receiver<DeviceToHost>,
-) -> anyhow::Result<()> {
-    let req_future = async move {
-        device_tx
-            .send(HostToDevice::GetStatus)
-            .await
-            .context("Device TX channel was unexpectedly closed")
-    };
-    let resp_future = async move {
-        loop {
-            match device_rx.recv().await {
-                Ok(DeviceToHost::Status(status)) => return Ok(status),
-                Ok(_) => continue,
-                Err(RecvError::Lagged(_)) => continue,
-                Err(RecvError::Closed) => {
-                    return Err(anyhow!("Device RX channel was unexpectedly closed"))
-                }
-            }
-        }
-    };
-
-    match tokio::try_join!(req_future, resp_future) {
-        Ok((_, status)) => {
-            dbg!(status);
-            Ok(())
-        }
-        // have to rewrap to change the type ('Ok' branches are different)
-        Err(e) => Err(e),
-    }
-}
-
-pub async fn hid_demo(
-    device_tx: mpsc::Sender<HostToDevice>,
-    mut device_rx: broadcast::Receiver<DeviceToHost>,
-    csv_filename: String,
-) -> anyhow::Result<()> {
-    sleep(Duration::from_secs(3)).await;
-
-    let req_future = async move {
-        device_tx
-            .send(HostToDevice::SendHidEvent {
-                hid_event: HidReport::Keyboard(KeyboardReport {
-                    modifier: 0,
-                    reserved: 0,
-                    leds: 0,
-                    keycodes: [KeyboardUsage::KeyboardAa as u8, 0, 0, 0, 0, 0],
-                }),
-                duration_ms: 300,
-            })
-            .await
-            .context("Device TX channel was unexpectedly closed")
-    };
-    let resp_future = async move {
-        let mut data: Vec<(&'static str, u64, u32)> = vec![];
-        loop {
-            // todo: make this sane
-            match timeout(Duration::from_millis(100), device_rx.recv()).await {
-                Ok(Ok(DeviceToHost::LightLevel {
-                    microsecond,
-                    light_level,
-                })) => data.push(("light_level", microsecond, light_level)),
-                Ok(Ok(DeviceToHost::HidReport { microsecond, .. })) => {
-                    data.push(("hid_event", microsecond, 0))
-                }
-                Ok(Ok(_)) => continue,
-                Ok(Err(RecvError::Lagged(_))) => continue,
-                Ok(Err(RecvError::Closed)) => {
-                    let result: anyhow::Result<Vec<(&'static str, u64, u32)>> =
-                        Err(anyhow!("Device RX channel was unexpectedly closed"));
-                    return result;
-                }
-                Err(_) => return Ok(data),
-            }
-        }
-    };
-
-    match tokio::try_join!(req_future, resp_future) {
-        Ok((_, data)) => {
-            dbg!(&data);
-            let mut file = File::create(csv_filename).context("CSV file creation error")?;
-            let mut start: Option<u64> = None;
-            for (kind, microsecond, light_level) in data {
-                match start {
-                    None if kind == "hid_event" => start = Some(microsecond),
-                    None => continue,
-                    Some(start_microsecond) => {
-                        writeln!(
-                            file,
-                            "{:.4},{:.4}",
-                            (microsecond - start_microsecond) as f64 / 1000f64,
-                            light_level as f64 / ((1 << 23) - 1) as f64
-                        )
-                        .context("CSV file write error")?;
-                    }
-                }
-            }
-            file.flush()?;
-            Ok(())
-        }
-        // have to rewrap to change the type ('Ok' branches are different)
-        Err(e) => Err(e),
-    }
-}
+// pub async fn hid_demo(
+//     device_tx: mpsc::Sender<HostToDevice>,
+//     mut device_rx: broadcast::Receiver<DeviceToHost>,
+//     csv_filename: String,
+// ) -> anyhow::Result<()> {
+//     sleep(Duration::from_secs(3)).await;
+//
+//     let req_future = async move {
+//         device_tx
+//             .send(HostToDevice::SendHidEvent {
+//                 hid_event: HidReport::Keyboard(KeyboardReport {
+//                     modifier: 0,
+//                     reserved: 0,
+//                     leds: 0,
+//                     keycodes: [KeyboardUsage::KeyboardAa as u8, 0, 0, 0, 0, 0],
+//                 }),
+//                 duration_ms: 300,
+//             })
+//             .await
+//             .context("Device TX channel was unexpectedly closed")
+//     };
+//     let resp_future = async move {
+//         let mut data: Vec<(&'static str, u64, u32)> = vec![];
+//         loop {
+//             // todo: make this sane
+//             match timeout(Duration::from_millis(100), device_rx.recv()).await {
+//                 Ok(Ok(DeviceToHost::LightLevel {
+//                     microsecond,
+//                     light_level,
+//                 })) => data.push(("light_level", microsecond, light_level)),
+//                 Ok(Ok(DeviceToHost::HidReport { microsecond, .. })) => {
+//                     data.push(("hid_event", microsecond, 0))
+//                 }
+//                 Ok(Ok(_)) => continue,
+//                 Ok(Err(RecvError::Lagged(_))) => continue,
+//                 Ok(Err(RecvError::Closed)) => {
+//                     let result: anyhow::Result<Vec<(&'static str, u64, u32)>> =
+//                         Err(anyhow!("Device RX channel was unexpectedly closed"));
+//                     return result;
+//                 }
+//                 Err(_) => return Ok(data),
+//             }
+//         }
+//     };
+//
+//     match tokio::try_join!(req_future, resp_future) {
+//         Ok((_, data)) => {
+//             dbg!(&data);
+//             let mut file = File::create(csv_filename).context("CSV file creation error")?;
+//             let mut start: Option<u64> = None;
+//             for (kind, microsecond, light_level) in data {
+//                 match start {
+//                     None if kind == "hid_event" => start = Some(microsecond),
+//                     None => continue,
+//                     Some(start_microsecond) => {
+//                         writeln!(
+//                             file,
+//                             "{:.4},{:.4}",
+//                             (microsecond - start_microsecond) as f64 / 1000f64,
+//                             light_level as f64 / ((1 << 23) - 1) as f64
+//                         )
+//                         .context("CSV file write error")?;
+//                     }
+//                 }
+//             }
+//             file.flush()?;
+//             Ok(())
+//         }
+//         // have to rewrap to change the type ('Ok' branches are different)
+//         Err(e) => Err(e),
+//     }
+// }

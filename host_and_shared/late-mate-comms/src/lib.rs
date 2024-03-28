@@ -13,6 +13,11 @@ use postcard::de_flavors::crc::from_bytes_u16;
 use postcard::experimental::max_size::MaxSize;
 use postcard::ser_flavors::crc::to_slice_u16;
 
+// VID/PID pair is allocated for Late Mate
+// see https://github.com/raspberrypi/usb-pid
+pub const USB_VID: u16 = 0x2E8A;
+pub const USB_PID: u16 = 0x108B;
+
 const fn max(a: usize, b: usize) -> usize {
     [a, b][(a < b) as usize]
 }
