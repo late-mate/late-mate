@@ -1,5 +1,5 @@
 use crate::measurement_buffer::{Buffer, MAX_MEASUREMENT_DURATION};
-use crate::tasks::light_sensor::{MAX_LIGHT_LEVEL};
+use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
     CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, MeasurementBuffer,
     RawMutex, FIRMWARE_VERSION, HARDWARE_VERSION,
@@ -8,10 +8,7 @@ use embassy_executor::Spawner;
 use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_sync::signal::Signal;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
-use late_mate_comms::{
-    DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status,
-    Version,
-};
+use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status, Version};
 
 // how long to wait for a new value from the ADC
 const LIGHT_READING_TIMEOUT: Duration = Duration::from_millis(10);
@@ -24,6 +21,7 @@ async fn bg_measurement_loop_task(
     comms_to_host: &'static CommsToHost,
     mut light_readings_sub: LightReadingsSubscriber,
 ) {
+    defmt::info!("starting bg measurement loop");
     loop {
         let mut finish_time = BG_FINISH_TIME_SIGNAL.wait().await;
         'inner: while Instant::now() < finish_time {
@@ -63,6 +61,7 @@ async fn reactor_task(
     hid_signal: &'static HidSignal,
     measurement_buffer: &'static MeasurementBuffer,
 ) {
+    defmt::info!("starting reactor loop");
     loop {
         match comms_from_host.receive().await {
             HostToDevice::GetStatus => {
