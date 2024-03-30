@@ -27,7 +27,11 @@ impl Decoder for CrcCobsCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match self.acc.feed::<DeviceToHost>(src) {
-            FeedResult::Consumed => Ok(None),
+            FeedResult::Consumed => {
+                // todo: can this be done cleaner?
+                src.advance(src.len());
+                Ok(None)
+            }
             FeedResult::OverFull { .. } => Err(anyhow!("USB buffer overflow")),
             FeedResult::Error { error: e, .. } => {
                 Err(anyhow!("Serial packet decoding failure ({e:?})"))
@@ -64,6 +68,7 @@ pub async fn rx_loop(
             .await
             .expect("Serial stream seems to be closed")
             .context("Error reading device message")?;
+        //dbg!(msg);
         rx_sender
             .send(msg)
             .context("Error broadcasting device message")?;
@@ -78,6 +83,7 @@ pub async fn tx_loop(
     // .recv() will return None when all tx senders are dropped, ie there can be no more
     // tx messages, so it's fine to just exit when that happens
     while let Some(msg) = device_tx_receiver.recv().await {
+        //dbg!(msg);
         serial_tx.send(msg).await?;
     }
     Ok(())

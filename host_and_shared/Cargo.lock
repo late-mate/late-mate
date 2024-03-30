@@ -451,6 +451,7 @@ dependencies = [
  "clap",
  "futures",
  "late-mate-comms",
+ "log",
  "thiserror",
  "tokio",
  "tokio-serial",

@@ -125,7 +125,7 @@ impl CrcCobsAccumulator {
                             Err(error) => FeedResult::Error { error, remaining },
                         }
                     }
-                    Err(_) => {
+                    Err(()) => {
                         return FeedResult::Error {
                             error: postcard::Error::DeserializeBadEncoding,
                             remaining,

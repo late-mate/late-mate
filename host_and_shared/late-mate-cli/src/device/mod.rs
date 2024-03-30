@@ -5,8 +5,8 @@ use futures::StreamExt;
 use late_mate_comms::{DeviceToHost, HostToDevice, Status};
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::{broadcast, mpsc};
-use tokio::time::timeout;
+use tokio::sync::{broadcast, mpsc, watch};
+use tokio::time::{sleep, timeout};
 use tokio_serial::SerialPortBuilderExt;
 use tokio_util::codec::Framed;
 
@@ -15,8 +15,64 @@ mod serial;
 
 pub struct Device {
     tx_sender: mpsc::Sender<HostToDevice>,
-    rx_receiver: broadcast::Receiver<DeviceToHost>,
-    max_light_level: u32,
+    // this one is stored in the Device to obtain new broadcast subscriptions
+    rx_sender: broadcast::Sender<DeviceToHost>,
+    pub max_light_level: u32,
+    bg_light: BackgroundLevelMonitor,
+}
+
+struct BackgroundLevelMonitor {
+    is_active_sender: watch::Sender<bool>,
+    sender: broadcast::Sender<u32>,
+}
+
+pub async fn bg_request_loop(
+    tx_sender: mpsc::Sender<HostToDevice>,
+    mut is_active_receiver: watch::Receiver<bool>,
+) {
+    loop {
+        if is_active_receiver.wait_for(|x| *x).await.is_err() {
+            // is_active senders are dropped => Device is dropped => no point continuing
+            return;
+        }
+        if tx_sender
+            .send(HostToDevice::MeasureBackground { duration_ms: 1300 })
+            .await
+            .is_err()
+        {
+            // device tx channel is closed => device is disconnected => no point continuing
+            return;
+        }
+        sleep(Duration::from_millis(1000)).await;
+    }
+}
+
+pub async fn bg_channel_loop(
+    mut rx_reciever: broadcast::Receiver<DeviceToHost>,
+    mut is_active_receiver: watch::Receiver<bool>,
+    bg_sender: broadcast::Sender<u32>,
+) {
+    loop {
+        if is_active_receiver.wait_for(|x| *x).await.is_err() {
+            // is_active senders are dropped => Device is dropped => no point continuing
+            return;
+        }
+
+        match rx_reciever.recv().await {
+            Ok(DeviceToHost::CurrentLightLevel(level)) => match bg_sender.send(level) {
+                Ok(_) => (),
+                Err(_) => {
+                    // all receivers were dropped, but they might rejoin later
+                    // todo: maybe I should stop here?
+                    continue;
+                }
+            },
+            Ok(_) => (),
+            Err(RecvError::Lagged(_)) => (),
+            // device rx channel is closed => device is disconnected => give up
+            Err(RecvError::Closed) => return,
+        }
+    }
 }
 
 impl Device {
@@ -36,10 +92,36 @@ impl Device {
         let _tx_loop_handle = tokio::spawn(tx_loop(serial_framed_tx, tx_receiver));
         let _rx_loop_handle = tokio::spawn(rx_loop(serial_framed_rx, rx_sender.clone()));
 
+        // todo: this is shite
+        tokio::spawn(async move {
+            tokio::select! {
+                msg = _tx_loop_handle => dbg!(msg),
+                msg = _rx_loop_handle => dbg!(msg)
+            }
+        });
+
+        let (bg_is_active_sender, bg_is_active_receiver) = watch::channel(false);
+        let (bg_sender, _bg_receiver) = broadcast::channel(1);
+
+        // handle handles?
+        tokio::spawn(bg_request_loop(
+            tx_sender.clone(),
+            bg_is_active_receiver.clone(),
+        ));
+        tokio::spawn(bg_channel_loop(
+            rx_receiver,
+            bg_is_active_receiver,
+            bg_sender.clone(),
+        ));
+
         let mut tmp_self = Self {
             tx_sender,
-            rx_receiver,
+            rx_sender,
             max_light_level: 0,
+            bg_light: BackgroundLevelMonitor {
+                is_active_sender: bg_is_active_sender,
+                sender: bg_sender,
+            },
         };
         let device_status = tmp_self.get_status().await?;
         tmp_self.max_light_level = device_status.max_light_level;
@@ -58,6 +140,15 @@ impl Device {
         .await
     }
 
+    // todo: detect drop or stop subscribing in some way?
+    pub fn subscribe_to_background(&mut self) -> broadcast::Receiver<u32> {
+        self.bg_light
+            .is_active_sender
+            .send(true)
+            .expect("is_active channel must be opened here");
+        self.bg_light.sender.subscribe()
+    }
+
     async fn one_off<T>(
         &mut self,
         command: HostToDevice,
@@ -70,8 +161,9 @@ impl Device {
                 .context("Device TX channel was unexpectedly closed")
         };
         let resp_future = async {
+            let mut rx_receiver = self.rx_sender.subscribe();
             loop {
-                match self.rx_receiver.recv().await {
+                match rx_receiver.recv().await {
                     Ok(msg) => {
                         if let Some(mapper) = &resp_mapper {
                             match mapper(msg) {

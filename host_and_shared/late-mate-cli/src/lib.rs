@@ -19,12 +19,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
-    MonitorBackground,
     /// Request status from the Late Mate device
     Status,
-    /// Run a simulated HID event (pressing A on the keyboard) while measuring light levels
-    HidDemo { csv_filename: String },
+    /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
+    MonitorBackground,
+    /// Run an http/websocket server
+    Server,
 }
 
 pub async fn run() -> anyhow::Result<()> {
@@ -37,18 +37,20 @@ pub async fn run() -> anyhow::Result<()> {
     // this async block is important to bring commands to the same return type
     let command_future = async {
         match &cli.command {
-            //Command::MonitorBackground => monitor_background(device_tx, device_rx).await,
+            Command::MonitorBackground => monitor_background(device).await?,
             Command::Status => {
-                dbg!(device.get_status().await);
+                let status = device.get_status().await?;
+                println!("Device status: {status:?}");
             }
             // Command::HidDemo { csv_filename } => {
             //     hid_demo(device_tx, device_rx, csv_filename.clone()).await
             // }
             _ => (),
-        }
+        };
+        Ok::<(), anyhow::Error>(())
     };
 
-    command_future.await;
+    command_future.await?;
 
     Ok(())
 
@@ -60,47 +62,23 @@ pub async fn run() -> anyhow::Result<()> {
     // }
 }
 
-pub async fn monitor_background(
-    device_tx: mpsc::Sender<HostToDevice>,
-    mut device_rx: broadcast::Receiver<DeviceToHost>,
-) -> anyhow::Result<()> {
-    let request_loop_future = async move {
-        let mut interval = interval(Duration::from_millis(1000));
+pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
+    let mut receiver = device.subscribe_to_background();
 
-        loop {
-            device_tx
-                .send(HostToDevice::MeasureBackground { duration_ms: 1300 })
-                .await
-                .context("Error requesting more background light level values")?;
-            interval.tick().await;
-        }
-    };
-
-    let print_future = async move {
-        // 120hz, no point streaming faster
-        let mut interval = interval(Duration::from_millis(1000 / 120));
-        loop {
-            let msg = match device_rx.recv().await {
-                Ok(x) => x,
-                Err(RecvError::Lagged(_)) => continue,
-                Err(RecvError::Closed) => {
-                    return Err(anyhow!("Device RX channel was unexpectedly closed"))
-                }
-            };
-            if let DeviceToHost::CurrentLightLevel(light_level) = msg {
+    // 120hz, no point streaming faster
+    let mut interval = interval(Duration::from_millis(1000 / 120));
+    loop {
+        match receiver.recv().await {
+            Ok(light_level) => {
                 println!(
                     "{:.4}",
-                    // todo: pull max light level from the status command
-                    (light_level as f64 / ((1 << 23) - 1) as f64) * 100f64
+                    (light_level as f64 / device.max_light_level as f64) * 100f64
                 )
             }
-            interval.tick().await;
-        }
-    };
-
-    tokio::select! {
-        ret = request_loop_future => ret,
-        ret = print_future => ret
+            Err(RecvError::Lagged(_)) => continue,
+            Err(RecvError::Closed) => return Err(anyhow!("Background light level channel closed")),
+        };
+        interval.tick().await;
     }
 }
 
