@@ -910,6 +910,7 @@ dependencies = [
  "defmt",
  "postcard",
  "serde",
+ "ssmarshal",
  "usbd-hid 0.6.1",
 ]
 

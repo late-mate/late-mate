@@ -38,7 +38,6 @@ log = "0.4"
 ads1220 = { path = "../host_and_shared/ads1220" }
 late-mate-comms = { path = "../host_and_shared/late-mate-comms" }
 
-
 # see https://embassy.dev/book/dev/getting_started.html#_it_didnt_work
 [profile.release]
 debug = 2

@@ -154,6 +154,8 @@ impl Device {
         command: HostToDevice,
         resp_mapper: Option<impl Fn(DeviceToHost) -> Option<T>>,
     ) -> anyhow::Result<T> {
+        let response_timeout = Duration::from_secs(3);
+
         let req_future = async {
             self.tx_sender
                 .send(command)
@@ -180,7 +182,7 @@ impl Device {
             }
         };
         let timely_resp_future = async move {
-            match timeout(Duration::from_secs(3), resp_future).await {
+            match timeout(response_timeout, resp_future).await {
                 Ok(Ok(x)) => Ok(x),
                 Ok(Err(e)) => Err(e),
                 Err(_) => Err(anyhow!("Timeout while waiting for response to {command:?}")),

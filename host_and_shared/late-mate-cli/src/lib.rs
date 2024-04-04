@@ -1,13 +1,12 @@
 mod device;
+mod nice_hid;
 
 use crate::device::Device;
 use anyhow::{anyhow, Context};
 use clap::{Parser, Subcommand};
-use late_mate_comms::{DeviceToHost, HostToDevice};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::{broadcast, mpsc};
 use tokio::time::interval;
 
 #[derive(Parser)]
@@ -25,6 +24,14 @@ enum Command {
     MonitorBackground,
     /// Run an http/websocket server
     Server,
+    SendHidReport {
+        #[arg(value_parser(parse_hid_report))]
+        report: nice_hid::HidReport,
+    },
+}
+
+fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
+    serde_json::from_str(s).map_err(|e| anyhow!("Invalid JSON: {}", e))
 }
 
 pub async fn run() -> anyhow::Result<()> {
@@ -40,7 +47,7 @@ pub async fn run() -> anyhow::Result<()> {
             Command::MonitorBackground => monitor_background(device).await?,
             Command::Status => {
                 let status = device.get_status().await?;
-                println!("Device status: {status:?}");
+                println!("Device status: {status:#?}");
             }
             // Command::HidDemo { csv_filename } => {
             //     hid_demo(device_tx, device_rx, csv_filename.clone()).await
