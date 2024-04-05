@@ -9,7 +9,7 @@ pub enum MouseButton {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct MouseReport {
     pub buttons: Vec<MouseButton>,
     pub x: i8,
@@ -142,7 +142,7 @@ pub enum Keycode {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct KeyboardReport {
     pub modifiers: Vec<KeyboardModifier>,
     // at most six keycodes are actually used

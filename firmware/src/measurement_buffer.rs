@@ -11,16 +11,21 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn new(started_at: Instant) -> Self {
+    pub const fn new() -> Self {
         Self {
-            started_at,
+            started_at: Instant::MIN,
             measurements: Vec::new(),
         }
     }
 
+    pub fn clear(&mut self, new_start: Instant) {
+        self.measurements.clear();
+        self.started_at = new_start;
+    }
+
     pub fn store(&mut self, happened_at: Instant, event: MeasurementEvent) {
         assert!(
-            happened_at > self.started_at,
+            happened_at >= self.started_at,
             "time travellers shouldn't use this code"
         );
         assert!(

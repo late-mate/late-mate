@@ -39,10 +39,7 @@ async fn hid_sender_task(
             HidAckKind::Buffered => {
                 let reported_at = Instant::now();
                 let mut guard = measurement_buffer.lock().await;
-                guard
-                    .as_mut()
-                    .expect("measurement buffer must exist to buffer a HID report ack")
-                    .store(reported_at, MeasurementEvent::HidReport(request.id));
+                guard.store(reported_at, MeasurementEvent::HidReport(request.id));
             }
         }
     }

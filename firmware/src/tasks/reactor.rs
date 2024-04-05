@@ -1,11 +1,12 @@
-use crate::measurement_buffer::{Buffer, MAX_MEASUREMENT_DURATION};
+use crate::measurement_buffer::MAX_MEASUREMENT_DURATION;
 use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
     CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, MeasurementBuffer,
     RawMutex, FIRMWARE_VERSION, HARDWARE_VERSION,
 };
 use embassy_executor::Spawner;
-use embassy_futures::select::{select, select3, Either, Either3};
+use embassy_futures::join::join;
+use embassy_futures::select::{select, Either};
 use embassy_sync::signal::Signal;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
 use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status, Version};
@@ -113,6 +114,8 @@ async fn measure(
     start: HidRequest,
     followup: Option<MeasureFollowup>,
 ) {
+    defmt::info!("a measurement requested");
+
     if duration_ms as u64 > MAX_MEASUREMENT_DURATION.as_millis() {
         defmt::error!(
             "duration_ms must be lower than {}",
@@ -121,78 +124,81 @@ async fn measure(
         return;
     }
 
+    defmt::info!("cancelling background measurements");
+
     // cancel background measurements
     BG_FINISH_TIME_SIGNAL.signal(Instant::now());
     while BG_MEASUREMENT_ACTIVE.wait().await {
         // wait for the background measurement loop to finish
     }
 
+    defmt::info!("clearing the buffer");
+
     let started_at = Instant::now();
-    measurement_buffer
-        .lock()
-        .await
-        .replace(Buffer::new(started_at));
+    {
+        measurement_buffer.lock().await.clear(started_at);
+    }
+
+    defmt::info!("sending the start signal and measuring into the buffer");
 
     // todo: maybe change the signal to a channel?
     hid_signal.signal((start, HidAckKind::Buffered));
 
-    // if there is no followup, add a dummy followup duration
-    // that's definitely longer than the measurement
-    let followup_at = started_at
-        + followup.map_or(Duration::from_secs(60), |f| {
-            Duration::from_millis(f.after_ms as u64)
-        });
     let finish_at = started_at + Duration::from_millis(duration_ms as u64);
 
-    loop {
-        match select3(
-            with_timeout(
-                LIGHT_READING_TIMEOUT,
-                light_readings_sub.next_message_pure(),
-            ),
-            Timer::at(followup_at),
-            Timer::at(finish_at),
-        )
-        .await
-        {
-            Either3::First(Ok(light_reading)) => {
-                let mut guard = measurement_buffer.lock().await;
-                guard
-                    .as_mut()
-                    .expect("measurement buffer must exist to store a measurement")
-                    .store(light_reading.instant, light_reading.into());
+    let reader_future = async {
+        loop {
+            let light_reading = light_readings_sub.next_message_pure().await;
+            if light_reading.instant < started_at {
+                // it's the last value before the measurement started, ignore
+                continue;
             }
-            Either3::First(Err(TimeoutError)) => {
-                defmt::error!("timeout waiting for a light reading during measurement");
+            if Instant::now() >= finish_at {
                 return;
             }
-            Either3::Second(_) => {
-                hid_signal.signal((
-                    followup
-                        .expect("can only happen if followup is Some")
-                        .hid_request,
-                    HidAckKind::Buffered,
-                ));
-            }
-            Either3::Third(_) => break,
+            measurement_buffer
+                .lock()
+                .await
+                .store(light_reading.instant, light_reading.into());
         }
+    };
+
+    let timely_reader_future = async move {
+        match with_timeout(Duration::from_millis(duration_ms as u64 * 2), reader_future).await {
+            Ok(_) => (),
+            Err(TimeoutError) => {
+                defmt::error!("timeout while running a measurement");
+                return;
+            }
+        }
+    };
+
+    if let Some(followup) = followup {
+        let followup_future = async {
+            Timer::at(started_at + Duration::from_millis(followup.after_ms as u64)).await;
+            hid_signal.signal((followup.hid_request, HidAckKind::Buffered));
+        };
+        join(followup_future, timely_reader_future).await;
+    } else {
+        timely_reader_future.await;
     }
 
-    let mut guard = measurement_buffer.lock().await;
-    let buffer = guard
-        .take()
-        .expect("measurement buffer must exist after a measurement");
-    let total = buffer.measurements.len() as u16;
-    for (idx, measurement) in buffer.measurements.into_iter().enumerate() {
+    defmt::info!("measurements finished, sending the buffer");
+
+    let guard = measurement_buffer.lock().await;
+    let total = guard.measurements.len() as u16;
+    for (idx, measurement) in guard.measurements.iter().enumerate() {
         let idx = idx as u16;
         comms_to_host
             .send(DeviceToHost::BufferedMeasurement {
-                measurement,
+                measurement: *measurement,
                 idx,
                 total,
             })
             .await;
     }
+
+    defmt::info!("measurement finished");
 }
 
 #[allow(clippy::too_many_arguments)]

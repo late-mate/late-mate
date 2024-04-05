@@ -3,11 +3,14 @@ use crate::device::serial::find_serial_port;
 use crate::nice_hid;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
-use late_mate_comms::{DeviceToHost, HidRequest, HidRequestId, HostToDevice, Status};
+use late_mate_comms::{
+    DeviceToHost, HidRequest, HidRequestId, HostToDevice, MeasureFollowup, Measurement, Status,
+};
+use std::future::Future;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{broadcast, mpsc, watch};
-use tokio::time::{sleep, timeout};
+use tokio::time::sleep;
 use tokio_serial::SerialPortBuilderExt;
 use tokio_util::codec::Framed;
 
@@ -88,7 +91,8 @@ impl Device {
         let (serial_framed_tx, serial_framed_rx) = serial_framed.split();
 
         let (tx_sender, tx_receiver) = mpsc::channel(4);
-        let (rx_sender, rx_receiver) = broadcast::channel(1);
+        // todo: that 4k is a pisstake, figure out what to do about Lagged
+        let (rx_sender, rx_receiver) = broadcast::channel(4000);
 
         // todo: handle those handles
         let _tx_loop_handle = tokio::spawn(tx_loop(serial_framed_tx, tx_receiver));
@@ -145,16 +149,14 @@ impl Device {
     }
 
     pub async fn send_hid_report(&mut self, report: &nice_hid::HidReport) -> anyhow::Result<()> {
-        let req_id = self.hid_counter;
         let hid_request = HidRequest {
-            id: req_id,
+            id: self.new_hid_request_id(),
             report: report.into(),
         };
-        self.hid_counter += 1;
         self.one_off(
             HostToDevice::SendHidReport(hid_request),
             Some(|msg| match msg {
-                DeviceToHost::HidReportSent(id) if id == req_id => Some(()),
+                DeviceToHost::HidReportSent(id) if id == hid_request.id => Some(()),
                 _ => None,
             }),
         )
@@ -170,6 +172,95 @@ impl Device {
         self.bg_light.sender.subscribe()
     }
 
+    pub async fn measure(
+        &mut self,
+        duration_ms: u16,
+        start: &nice_hid::HidReport,
+        followup: Option<(u16, &nice_hid::HidReport)>,
+    ) -> anyhow::Result<Vec<Measurement>> {
+        assert!(duration_ms < 1000);
+        let command = HostToDevice::Measure {
+            duration_ms,
+            start: HidRequest {
+                id: self.new_hid_request_id(),
+                report: start.into(),
+            },
+            followup: followup.map(|(after_ms, report)| MeasureFollowup {
+                after_ms,
+                hid_request: HidRequest {
+                    id: self.new_hid_request_id(),
+                    report: report.into(),
+                },
+            }),
+        };
+
+        let req_future = async {
+            self.tx_sender
+                .send(command)
+                .await
+                .context("Device TX channel was unexpectedly closed")
+        };
+
+        let mut rx_receiver = self.rx_sender.subscribe();
+        let resp_future = async {
+            let mut maybe_total: Option<u16> = None;
+            let mut next_idx = 0;
+            let mut measurements: Vec<Measurement> = Vec::new();
+
+            loop {
+                match rx_receiver.recv().await {
+                    Ok(DeviceToHost::BufferedMeasurement {
+                        measurement,
+                        idx,
+                        total,
+                    }) => {
+                        assert_eq!(idx, next_idx, "Unexpected buffered measurement idx");
+                        assert!(idx < total, "Unexpected buffered measurement idx larger than total, {idx} > {total}");
+                        match maybe_total {
+                            None => {
+                                maybe_total = Some(total);
+                                measurements.reserve(total as usize);
+                            }
+                            Some(known_total) => {
+                                assert_eq!(
+                                    known_total, total,
+                                    "Unexpected change of total number of measurements"
+                                );
+                            }
+                        }
+                        measurements.push(measurement);
+                        next_idx += 1;
+                        if idx == total - 1 {
+                            return Ok(measurements);
+                        }
+                    }
+                    Ok(_) => continue,
+                    Err(RecvError::Lagged(_)) => {
+                        // todo: this is a problem, the results are missed here
+                        println!("lagged");
+                        continue;
+                    }
+                    Err(RecvError::Closed) => {
+                        return Err(anyhow!("Device RX channel was unexpectedly closed"))
+                    }
+                }
+            }
+        };
+
+        match tokio::try_join!(
+            req_future,
+            flat_timeout(
+                Duration::from_millis(duration_ms as u64 * 2),
+                anyhow!("Timeout while waiting for measurements"),
+                resp_future
+            )
+        ) {
+            Ok((_, measurements)) => Ok(measurements),
+            // have to rewrap to change the type ('Ok' branches are different)
+            Err(e) => Err(e),
+        }
+    }
+
     async fn one_off<T>(
         &mut self,
         command: HostToDevice,
@@ -183,8 +274,9 @@ impl Device {
                 .await
                 .context("Device TX channel was unexpectedly closed")
         };
+        // I believe this should ~guarantee that we won't miss the response
+        let mut rx_receiver = self.rx_sender.subscribe();
         let resp_future = async {
-            let mut rx_receiver = self.rx_sender.subscribe();
             loop {
                 match rx_receiver.recv().await {
                     Ok(msg) => {
@@ -202,18 +294,36 @@ impl Device {
                 }
             }
         };
-        let timely_resp_future = async move {
-            match timeout(response_timeout, resp_future).await {
-                Ok(Ok(x)) => Ok(x),
-                Ok(Err(e)) => Err(e),
-                Err(_) => Err(anyhow!("Timeout while waiting for response to {command:?}")),
-            }
-        };
 
-        match tokio::try_join!(req_future, timely_resp_future) {
+        match tokio::try_join!(
+            req_future,
+            flat_timeout(
+                response_timeout,
+                anyhow!("Timeout while waiting for response to {command:?}"),
+                resp_future
+            )
+        ) {
             Ok((_, status)) => Ok(status),
             // have to rewrap to change the type ('Ok' branches are different)
             Err(e) => Err(e),
         }
+    }
+
+    fn new_hid_request_id(&mut self) -> HidRequestId {
+        let id = self.hid_counter;
+        self.hid_counter += 1;
+        id
+    }
+}
+
+async fn flat_timeout<F: Future<Output = anyhow::Result<R>>, R>(
+    timeout_duration: Duration,
+    timeout_error: anyhow::Error,
+    future: F,
+) -> anyhow::Result<R> {
+    match tokio::time::timeout(timeout_duration, future).await {
+        Ok(Ok(x)) => Ok(x),
+        Ok(Err(e)) => Err(e),
+        Err(_) => Err(timeout_error),
     }
 }

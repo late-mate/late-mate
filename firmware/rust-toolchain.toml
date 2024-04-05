@@ -1,7 +1,7 @@
 # Edited down from Embassy's toolchain on 2023-11-09
 [toolchain]
-channel = "1.75"
-components = [ "rust-src", "rustfmt", "llvm-tools" ]
+channel = "1.77.1"
+components = ["rust-src", "rustfmt", "llvm-tools"]
 targets = [
     "thumbv6m-none-eabi",
 ]

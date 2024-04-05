@@ -85,8 +85,8 @@ pub enum HidAckKind {
 pub type HidSignal = Signal<RawMutex, (HidRequest, HidAckKind)>;
 pub static HID_SIGNAL: HidSignal = Signal::new();
 
-pub type MeasurementBuffer = Mutex<RawMutex, Option<Buffer>>;
-pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(None);
+pub type MeasurementBuffer = Mutex<RawMutex, Buffer>;
+pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(Buffer::new());
 
 pub async fn main(spawner: Spawner) {
     info!("Late Mate is booting up");

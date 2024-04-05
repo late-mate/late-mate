@@ -28,6 +28,17 @@ enum Command {
         #[arg(value_parser(parse_hid_report))]
         reports: Vec<nice_hid::HidReport>,
     },
+    /// Run a single latency measurement
+    Measure {
+        #[arg(long, default_value = "300")]
+        duration: u16,
+        #[arg(long, value_parser(parse_hid_report))]
+        start: nice_hid::HidReport,
+        #[arg(long, requires = "followup")]
+        followup_after: Option<u16>,
+        #[arg(long, value_parser(parse_hid_report), requires = "followup_after")]
+        followup: Option<nice_hid::HidReport>,
+    },
 }
 
 fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
@@ -43,7 +54,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     // this async block is important to bring commands to the same return type
     let command_future = async {
-        match &cli.command {
+        match cli.command {
             Command::MonitorBackground => monitor_background(device).await?,
             Command::Status => {
                 let status = device.get_status().await?;
@@ -51,13 +62,28 @@ pub async fn run() -> anyhow::Result<()> {
             }
             Command::SendHidReports { reports } => {
                 for report in reports {
-                    device.send_hid_report(report).await?;
+                    device.send_hid_report(&report).await?;
                 }
             }
-            // Command::HidDemo { csv_filename } => {
-            //     hid_demo(device_tx, device_rx, csv_filename.clone()).await
-            // }
-            _ => (),
+            // todo: check the duration
+            Command::Measure {
+                duration,
+                start,
+                followup_after,
+                followup,
+            } => {
+                let measurements = device
+                    .measure(
+                        duration,
+                        &start,
+                        followup.as_ref().map(|f| (followup_after.unwrap(), f)),
+                    )
+                    .await?;
+                for m in measurements {
+                    println!("{m:?}");
+                }
+            }
+            Command::Server => (),
         };
         Ok::<(), anyhow::Error>(())
     };
