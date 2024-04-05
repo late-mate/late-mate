@@ -1,8 +1,9 @@
 use crate::device::rxtx::{rx_loop, tx_loop, CrcCobsCodec};
 use crate::device::serial::find_serial_port;
+use crate::nice_hid;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
-use late_mate_comms::{DeviceToHost, HostToDevice, Status};
+use late_mate_comms::{DeviceToHost, HidRequest, HidRequestId, HostToDevice, Status};
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{broadcast, mpsc, watch};
@@ -19,6 +20,7 @@ pub struct Device {
     rx_sender: broadcast::Sender<DeviceToHost>,
     pub max_light_level: u32,
     bg_light: BackgroundLevelMonitor,
+    hid_counter: HidRequestId,
 }
 
 struct BackgroundLevelMonitor {
@@ -122,6 +124,8 @@ impl Device {
                 is_active_sender: bg_is_active_sender,
                 sender: bg_sender,
             },
+            // 1 is more special than 0
+            hid_counter: 1,
         };
         let device_status = tmp_self.get_status().await?;
         tmp_self.max_light_level = device_status.max_light_level;
@@ -134,6 +138,23 @@ impl Device {
             HostToDevice::GetStatus,
             Some(|msg| match msg {
                 DeviceToHost::Status(s) => Some(s),
+                _ => None,
+            }),
+        )
+        .await
+    }
+
+    pub async fn send_hid_report(&mut self, report: &nice_hid::HidReport) -> anyhow::Result<()> {
+        let req_id = self.hid_counter;
+        let hid_request = HidRequest {
+            id: req_id,
+            report: report.into(),
+        };
+        self.hid_counter += 1;
+        self.one_off(
+            HostToDevice::SendHidReport(hid_request),
+            Some(|msg| match msg {
+                DeviceToHost::HidReportSent(id) if id == req_id => Some(()),
                 _ => None,
             }),
         )

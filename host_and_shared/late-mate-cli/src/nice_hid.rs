@@ -8,7 +8,8 @@ pub enum MouseButton {
     Middle = 0x03,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct MouseReport {
     pub buttons: Vec<MouseButton>,
     pub x: i8,
@@ -32,14 +33,6 @@ impl From<&MouseReport> for late_mate_comms::MouseReport {
             pan: value.pan,
         }
     }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
-pub struct KeyboardReport {
-    pub modifier: Vec<KeyboardModifier>,
-    // at most six keycodes are actually used
-    // todo: think more about the API design here. can it be more transparent?
-    pub keycodes: Vec<Keycode>,
 }
 
 // see https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2
@@ -148,15 +141,24 @@ pub enum Keycode {
     VolumeDown = 129,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct KeyboardReport {
+    pub modifiers: Vec<KeyboardModifier>,
+    // at most six keycodes are actually used
+    // todo: think more about the API design here. can it be more transparent?
+    pub keycodes: Vec<Keycode>,
+}
+
 impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
     fn from(value: &KeyboardReport) -> Self {
         let mut byte_modifier = 0u8;
-        for modifier in &value.modifier {
+        for modifier in &value.modifiers {
             byte_modifier |= *modifier as u8
         }
 
         let mut byte_keycodes = [0u8; 6];
-        for (i, keycode) in value.keycodes.iter().enumerate() {
+        for (i, keycode) in value.keycodes.iter().take(6).enumerate() {
             byte_keycodes[i] = *keycode as u8;
         }
 
@@ -172,4 +174,13 @@ impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
 pub enum HidReport {
     Mouse(MouseReport),
     Keyboard(KeyboardReport),
+}
+
+impl From<&HidReport> for late_mate_comms::HidReport {
+    fn from(value: &HidReport) -> Self {
+        match value {
+            HidReport::Mouse(report) => late_mate_comms::HidReport::Mouse(report.into()),
+            HidReport::Keyboard(report) => late_mate_comms::HidReport::Keyboard(report.into()),
+        }
+    }
 }

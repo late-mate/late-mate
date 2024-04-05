@@ -5,9 +5,7 @@ mod types;
 pub use crate::types::device_to_host::{
     DeviceToHost, Measurement, MeasurementEvent, Status, Version,
 };
-pub use crate::types::hid::{
-    HidReport, HidRequest, HidRequestId as HidReportId, KeyboardReport, MouseReport,
-};
+pub use crate::types::hid::{HidReport, HidRequest, HidRequestId, KeyboardReport, MouseReport};
 pub use crate::types::host_to_device::{HostToDevice, MeasureFollowup};
 use postcard::de_flavors::crc::from_bytes_u16;
 use postcard::experimental::max_size::MaxSize;
