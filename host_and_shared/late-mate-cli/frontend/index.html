@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Late Mate</title>
+  </head>
+  <body>
+    <div class="flex w-full items-center px-2 text-2xl font-bold">
+      <img
+        class="m-1"
+        src="./icon.svg"
+        alt="Late Mate logo"
+        width="40"
+        height="40"
+      />
+      <h1 class="inline-block align-baseline">Late Mate</h1>
+    </div>
+    <div class="flex w-full justify-center bg-[#221830] px-2">
+      <ul
+        class="flex w-full max-w-[32rem] justify-around font-semibold text-white"
+      >
+        <li class="cursor-pointer p-2 underline underline-offset-2" data-active>
+          Status
+        </li>
+        <li class="cursor-pointer p-2">Monitor</li>
+        <li class="cursor-pointer p-2">Remote</li>
+        <li class="cursor-pointer p-2">Measure</li>
+        <li class="cursor-pointer p-2">🦆</li>
+      </ul>
+    </div>
+
+    <div id="page-status" class="mx-2 mt-4 flex flex-col items-center gap-2">
+      <button class="btn max-w-28">Load</button>
+      <pre id="status-field"></pre>
+    </div>
+
+    <div id="page-remote" class="mx-2 mt-4 flex flex-col gap-2 md:flex-row">
+      <div class="flex w-full flex-col items-start">
+        <label for="input-mouse">Mouse input</label>
+        <!-- prettier-ignore -->
+        <textarea id="input-mouse" disabled class="block w-full font-mono h-32">
+{
+    "type": "mouse",
+    "x": 20
+}</textarea>
+
+        <button class="btn mt-1 self-end">Send</button>
+      </div>
+
+      <div class="flex w-full flex-col items-start">
+        <label for="input-keyboard-1">Keyboard input #1</label>
+        <!-- prettier-ignore -->
+        <textarea id="input-keyboard-1" disabled class="block w-full font-mono h-32">
+{
+    "type": "keyboard",
+    "pressed_keys": ["a"]
+}</textarea>
+
+        <button class="btn mt-1 self-end">Send</button>
+      </div>
+
+      <div class="flex w-full flex-col items-start">
+        <label for="input-keyboard-2">Keyboard input #2</label>
+        <!-- prettier-ignore -->
+        <textarea id="input-keyboard-2" disabled class="block w-full font-mono h-32">
+{
+    "type": "keyboard"
+}</textarea>
+
+        <button class="btn mt-1 self-end">Send</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

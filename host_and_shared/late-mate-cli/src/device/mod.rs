@@ -34,20 +34,16 @@ struct BackgroundLevelMonitor {
 pub async fn bg_request_loop(
     tx_sender: mpsc::Sender<HostToDevice>,
     mut is_active_receiver: watch::Receiver<bool>,
-) {
+) -> anyhow::Result<()> {
     loop {
-        if is_active_receiver.wait_for(|x| *x).await.is_err() {
-            // is_active senders are dropped => Device is dropped => no point continuing
-            return;
-        }
-        if tx_sender
+        is_active_receiver
+            .wait_for(|x| *x)
+            .await
+            .context("is_active_sender is dropped => device is dropped => exit")?;
+        tx_sender
             .send(HostToDevice::MeasureBackground { duration_ms: 1300 })
             .await
-            .is_err()
-        {
-            // device tx channel is closed => device is disconnected => no point continuing
-            return;
-        }
+            .context("device tx channel is closed => device is disconnected => exit")?;
         sleep(Duration::from_millis(1000)).await;
     }
 }
@@ -56,12 +52,12 @@ pub async fn bg_channel_loop(
     mut rx_reciever: broadcast::Receiver<DeviceToHost>,
     mut is_active_receiver: watch::Receiver<bool>,
     bg_sender: broadcast::Sender<u32>,
-) {
+) -> anyhow::Result<()> {
     loop {
-        if is_active_receiver.wait_for(|x| *x).await.is_err() {
-            // is_active senders are dropped => Device is dropped => no point continuing
-            return;
-        }
+        is_active_receiver
+            .wait_for(|x| *x)
+            .await
+            .context("is_active_sender is dropped => device is dropped => exit")?;
 
         match rx_reciever.recv().await {
             Ok(DeviceToHost::CurrentLightLevel(level)) => match bg_sender.send(level) {
@@ -73,9 +69,13 @@ pub async fn bg_channel_loop(
                 }
             },
             Ok(_) => (),
+            // todo: lagged
             Err(RecvError::Lagged(_)) => (),
-            // device rx channel is closed => device is disconnected => give up
-            Err(RecvError::Closed) => return,
+            Err(RecvError::Closed) => {
+                return Err(anyhow!(
+                    "device rx channel is closed => device is disconnected => exit"
+                ))
+            }
         }
     }
 }
@@ -109,7 +109,7 @@ impl Device {
         let (bg_is_active_sender, bg_is_active_receiver) = watch::channel(false);
         let (bg_sender, _bg_receiver) = broadcast::channel(1);
 
-        // handle handles?
+        // todo: handle handles?
         tokio::spawn(bg_request_loop(
             tx_sender.clone(),
             bg_is_active_receiver.clone(),
@@ -165,11 +165,12 @@ impl Device {
 
     // todo: detect drop or stop subscribing in some way?
     pub fn subscribe_to_background(&mut self) -> broadcast::Receiver<u32> {
+        let receiver = self.bg_light.sender.subscribe();
         self.bg_light
             .is_active_sender
             .send(true)
             .expect("is_active channel must be opened here");
-        self.bg_light.sender.subscribe()
+        receiver
     }
 
     pub async fn measure(

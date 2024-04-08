@@ -1,5 +1,6 @@
 mod device;
 mod nice_hid;
+mod server;
 
 use crate::device::Device;
 use anyhow::anyhow;
@@ -22,7 +23,7 @@ enum Command {
     /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
     MonitorBackground,
     /// Run an http/websocket server
-    Server,
+    RunServer,
     /// Send HID reports to the device. Accepts a list of JSON-encoded HID report structures
     SendHidReports {
         #[arg(value_parser(parse_hid_report))]
@@ -65,13 +66,15 @@ pub async fn run() -> anyhow::Result<()> {
                     device.send_hid_report(&report).await?;
                 }
             }
-            // todo: check the duration
             Command::Measure {
                 duration,
                 start,
                 followup_after,
                 followup,
             } => {
+                if duration > 1000 {
+                    return Err(anyhow!("Maximum measurement length is 1000ms"));
+                }
                 let measurements = device
                     .measure(
                         duration,
@@ -83,7 +86,9 @@ pub async fn run() -> anyhow::Result<()> {
                     println!("{m:?}");
                 }
             }
-            Command::Server => (),
+            Command::RunServer => {
+                server::run().await;
+            }
         };
         Ok::<(), anyhow::Error>(())
     };

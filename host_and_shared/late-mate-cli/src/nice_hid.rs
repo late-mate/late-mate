@@ -56,7 +56,7 @@ pub enum KeyboardModifier {
 #[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
-pub enum Keycode {
+pub enum KeyboardKey {
     A = 4,
     B = 5,
     C = 6,
@@ -147,7 +147,7 @@ pub struct KeyboardReport {
     pub modifiers: Vec<KeyboardModifier>,
     // at most six keycodes are actually used
     // todo: think more about the API design here. can it be more transparent?
-    pub keycodes: Vec<Keycode>,
+    pub pressed_keys: Vec<KeyboardKey>,
 }
 
 impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
@@ -158,7 +158,7 @@ impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
         }
 
         let mut byte_keycodes = [0u8; 6];
-        for (i, keycode) in value.keycodes.iter().take(6).enumerate() {
+        for (i, keycode) in value.pressed_keys.iter().take(6).enumerate() {
             byte_keycodes[i] = *keycode as u8;
         }
 

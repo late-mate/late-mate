@@ -146,7 +146,6 @@ pub async fn main(spawner: Spawner) {
 
 // TODO:
 // - LED reflecting the light level
-// - USB
 // - temperature in the status report
 
 // TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu
