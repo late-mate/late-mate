@@ -8,6 +8,7 @@ pub struct Followup {
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[ts(export)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientToServer {
     Status,
     StartMonitoring,
@@ -30,6 +31,7 @@ pub struct Version {
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[ts(export)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerToClient {
     Status {
         version: Version,

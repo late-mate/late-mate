@@ -3,14 +3,13 @@ import type { Followup } from "./Followup";
 import type { HidReport } from "./HidReport";
 
 export type ClientToServer =
-  | "Status"
-  | "StartMonitoring"
-  | "StopMonitoring"
-  | { SendHidReport: { hid_report: HidReport } }
+  | { type: "status" }
+  | { type: "start_monitoring" }
+  | { type: "stop_monitoring" }
+  | { type: "send_hid_report"; hid_report: HidReport }
   | {
-      Measure: {
-        duration: number;
-        start: HidReport;
-        followup: Followup | null;
-      };
+      type: "measure";
+      duration: number;
+      start: HidReport;
+      followup: Followup | null;
     };

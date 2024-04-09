@@ -2,21 +2,19 @@
 import type { Version } from "./Version";
 
 export type ServerToClient =
-  | { Status: { version: Version; max_light_level: number } }
+  | { type: "status"; version: Version; max_light_level: number }
   | {
-      BackgroundValues: {
-        max_light_level: number;
-        light_levels: Array<number>;
-      };
+      type: "background_values";
+      max_light_level: number;
+      light_levels: Array<number>;
     }
   | {
-      Measurement: {
-        max_light_level: number;
-        /**
-         * microsecond | light level; None = HID event
-         */
-        levels: Array<[number, number | null]>;
-        change_us: number;
-        delay_us: number;
-      };
+      type: "measurement";
+      max_light_level: number;
+      /**
+       * microsecond | light level; None = HID event
+       */
+      levels: Array<[number, number | null]>;
+      change_us: number;
+      delay_us: number;
     };

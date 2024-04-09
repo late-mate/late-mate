@@ -171,7 +171,10 @@ async fn handle_message(
         }
         CTS::StartMonitoring => {}
         CTS::StopMonitoring => {}
-        CTS::SendHidReport { .. } => {}
+        CTS::SendHidReport { hid_report } => {
+            let mut device = device.lock().await;
+            device.send_hid_report(&hid_report).await?;
+        }
         CTS::Measure { .. } => {}
     }
     Ok(())

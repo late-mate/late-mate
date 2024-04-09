@@ -31,45 +31,50 @@
       </ul>
     </div>
 
-    <div id="page-status" class="mx-2 mt-4 flex flex-col items-center gap-2">
-      <button class="btn max-w-28">Load</button>
-      <pre id="status-field"></pre>
+    <!-- Status -->
+
+    <div
+      id="page-status"
+      class="mx-2 mt-4 flex hidden flex-col items-center gap-2"
+    >
+      <button class="btn max-w-28" id="status-load">Load</button>
+      <pre id="status-pre"></pre>
     </div>
 
-    <div id="page-remote" class="mx-2 mt-4 flex flex-col gap-2 md:flex-row">
+    <!-- Monitor -->
+
+    <!-- Remote -->
+
+    <div
+      id="page-remote"
+      class="mx-2 mt-4 flex hidden flex-col gap-2 md:flex-row"
+    >
       <div class="flex w-full flex-col items-start">
         <label for="input-mouse">Mouse input</label>
         <!-- prettier-ignore -->
-        <textarea id="input-mouse" disabled class="block w-full font-mono h-32">
-{
-    "type": "mouse",
-    "x": 20
-}</textarea>
+        <textarea id="input-mouse" class="block w-full font-mono h-44"></textarea>
 
-        <button class="btn mt-1 self-end">Send</button>
+        <button class="btn mt-1 self-end" id="input-mouse-send">Send</button>
       </div>
 
       <div class="flex w-full flex-col items-start">
         <label for="input-keyboard-1">Keyboard input #1</label>
         <!-- prettier-ignore -->
-        <textarea id="input-keyboard-1" disabled class="block w-full font-mono h-32">
-{
-    "type": "keyboard",
-    "pressed_keys": ["a"]
-}</textarea>
+        <textarea id="input-keyboard-1" class="block w-full font-mono h-44"></textarea>
 
-        <button class="btn mt-1 self-end">Send</button>
+        <button class="btn mt-1 self-end" id="input-keyboard-1-send">
+          Send
+        </button>
       </div>
 
       <div class="flex w-full flex-col items-start">
         <label for="input-keyboard-2">Keyboard input #2</label>
         <!-- prettier-ignore -->
-        <textarea id="input-keyboard-2" disabled class="block w-full font-mono h-32">
-{
-    "type": "keyboard"
-}</textarea>
+        <textarea id="input-keyboard-2" class="block w-full font-mono h-44"></textarea>
 
-        <button class="btn mt-1 self-end">Send</button>
+        <button class="btn mt-1 self-end" id="input-keyboard-2-send">
+          Send
+        </button>
       </div>
     </div>
 
