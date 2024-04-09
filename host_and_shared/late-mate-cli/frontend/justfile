@@ -1,2 +1,0 @@
-get-node:
-    bash -c "source /opt/homebrew/opt/nvm/nvm.sh --no-use; nvm install \$(<.node-version)"

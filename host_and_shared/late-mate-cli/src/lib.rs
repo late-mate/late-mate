@@ -1,6 +1,6 @@
-mod device;
-mod nice_hid;
-mod server;
+pub mod device;
+pub mod nice_hid;
+pub mod server;
 
 use crate::device::Device;
 use anyhow::anyhow;
@@ -87,7 +87,7 @@ pub async fn run() -> anyhow::Result<()> {
                 }
             }
             Command::RunServer => {
-                server::run().await;
+                server::run(device).await?;
             }
         };
         Ok::<(), anyhow::Error>(())

@@ -1,0 +1,7 @@
+ts-types-export:
+    rm -rf frontend/src/generated/types/
+    cargo run --release --bin ts-types-export frontend/src/generated/types/
+    cd frontend && yarn run prettier -w src/generated/types/
+
+get-node:
+    bash -c "source /opt/homebrew/opt/nvm/nvm.sh --no-use; nvm install \$(<.node-version)"

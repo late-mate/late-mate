@@ -1,5 +1,5 @@
 #[non_exhaustive]
-#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum MouseButton {
@@ -8,13 +8,20 @@ pub enum MouseButton {
     Middle = 0x03,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(default, deny_unknown_fields)]
 pub struct MouseReport {
+    // see this discussion https://github.com/Aleph-Alpha/ts-rs/issues/175
+    // for an explanation of this pattern
+    #[ts(optional, as = "Option<Vec<MouseButton>>")]
     pub buttons: Vec<MouseButton>,
+    #[ts(optional, as = "Option<i8>")]
     pub x: i8,
+    #[ts(optional, as = "Option<i8>")]
     pub y: i8,
+    #[ts(optional, as = "Option<i8>")]
     pub wheel: i8,
+    #[ts(optional, as = "Option<i8>")]
     pub pan: i8,
 }
 
@@ -36,7 +43,7 @@ impl From<&MouseReport> for late_mate_comms::MouseReport {
 }
 
 // see https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2
-#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyboardModifier {
@@ -53,7 +60,7 @@ pub enum KeyboardModifier {
 // see https://docs.rs/usbd-hid/latest/usbd_hid/descriptor/enum.KeyboardUsage.html
 // adjusted for readability
 #[non_exhaustive]
-#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyboardKey {
@@ -141,12 +148,14 @@ pub enum KeyboardKey {
     VolumeDown = 129,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(default, deny_unknown_fields)]
 pub struct KeyboardReport {
+    #[ts(optional, as = "Option<Vec<KeyboardModifier>>")]
     pub modifiers: Vec<KeyboardModifier>,
     // at most six keycodes are actually used
     // todo: think more about the API design here. can it be more transparent?
+    #[ts(optional, as = "Option<Vec<KeyboardKey>>")]
     pub pressed_keys: Vec<KeyboardKey>,
 }
 
@@ -169,7 +178,7 @@ impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum HidReport {
     Mouse(MouseReport),

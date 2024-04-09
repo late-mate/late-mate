@@ -1,16 +1,15 @@
-mod api;
+pub mod api;
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
-    Router,
+    Extension, Router,
 };
 
 use anyhow::Context;
-use std::borrow::Cow;
 use std::future::Future;
-use std::ops::ControlFlow;
+use std::sync::Arc;
 use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
     services::ServeDir,
@@ -19,14 +18,19 @@ use tower_http::{
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-//allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
-use axum::extract::ws::CloseFrame;
 
-//allows to split the websocket stream into separate TX and RX branches
+use crate::device::Device;
 use futures::{sink::SinkExt, stream::StreamExt};
+use tokio::sync::{mpsc, Mutex as TokioMutex};
+use tokio::task::JoinHandle;
 
-pub async fn run() -> anyhow::Result<()> {
+#[derive(Clone)]
+struct ServerState {
+    device: Arc<TokioMutex<Device>>,
+}
+
+pub async fn run(device: Device) -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -45,7 +49,10 @@ pub async fn run() -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+        )
+        .layer(Extension(ServerState {
+            device: Arc::new(TokioMutex::new(device)),
+        }));
 
     let address = "127.0.0.1:1838";
     let listener = tokio::net::TcpListener::bind(address)
@@ -63,86 +70,76 @@ pub async fn run() -> anyhow::Result<()> {
 async fn ws_handler(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    server_state: Extension<ServerState>,
 ) -> impl IntoResponse {
     println!("{addr} connected");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
-    ws.on_upgrade(move |socket| log_error(handle_socket(socket, addr)))
+    ws.on_upgrade(move |socket| log_error(handle_socket(socket, addr, server_state.device.clone())))
 }
 
 async fn log_error(result_fut: impl Future<Output = anyhow::Result<()>> + Send + 'static) {
     if let Err(e) = result_fut.await {
-        println!("{e}");
+        eprintln!("{e:?}");
     }
 }
 
 // spawned per connection
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr) -> anyhow::Result<()> {
+async fn handle_socket(
+    mut socket: WebSocket,
+    who: SocketAddr,
+    device: Arc<TokioMutex<Device>>,
+) -> anyhow::Result<()> {
     socket
         .send(Message::Ping(vec![1, 3, 3, 7]))
         .await
         .context(format!("Could not send ping to {who}"))?;
     println!("Pinged {who}");
 
-    let (mut sender, mut receiver) = socket.split();
+    let (mut ws_sender, mut ws_receiver) = socket.split();
+    let (to_client_sender, mut to_client_receiver) = mpsc::channel::<api::ServerToClient>(4);
 
-    // Spawn a task that will push several messages to the client (does not matter what client does)
-    let mut send_task = tokio::spawn(async move {
-        let n_msg = 20;
-        for i in 0..n_msg {
-            // In case of any websocket error, we exit.
-            if sender
-                .send(Message::Text(format!("Server message {i} ...")))
-                .await
-                .is_err()
-            {
-                return i;
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    let mut send_task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+        while let Some(msg) = to_client_receiver.recv().await {
+            ws_sender
+                .send(Message::Text(serde_json::to_string(&msg)?))
+                .await?;
         }
-
-        println!("Sending close to {who}...");
-        if let Err(e) = sender
-            .send(Message::Close(Some(CloseFrame {
-                code: axum::extract::ws::close_code::NORMAL,
-                reason: Cow::from("Goodbye"),
-            })))
-            .await
-        {
-            println!("Could not send Close due to {e}, probably it is ok?");
-        }
-        n_msg
+        Ok(())
     });
 
-    // This second task will receive messages from client and print them on server console
-    let mut recv_task = tokio::spawn(async move {
-        let mut cnt = 0;
-        while let Some(Ok(msg)) = receiver.next().await {
-            cnt += 1;
-            // print message and break if instructed to do so
-            if process_message(msg, who).is_break() {
-                break;
+    let mut recv_task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+        while let Some(msg) = ws_receiver.next().await {
+            match msg? {
+                Message::Text(txt) => {
+                    let from_client: api::ClientToServer = serde_json::from_str(&txt)?;
+                    handle_message(from_client, device.as_ref(), &to_client_sender).await?;
+                }
+                Message::Close(_) => return Ok(()),
+                // shouldn't happen
+                Message::Binary(_) => unimplemented!(),
+                // ignore
+                Message::Pong(_) => {}
+                // ignore, will be handled by axum
+                Message::Ping(_) => {}
             }
         }
-        cnt
+        Ok(())
     });
 
     // If any one of the tasks exit, abort the other.
     tokio::select! {
-        rv_a = &mut send_task => {
-            match rv_a {
-                Ok(a) => println!("{a} messages sent to {who}"),
-                Err(a) => println!("Error sending messages {a:?}")
-            }
+        send_join_result = &mut send_task => {
             recv_task.abort();
+            send_join_result
+                .context(format!("Panic in a websocket send task of {who}"))?
+                .context(format!("Error in a websocket send task of {who}"))?;
         },
-        rv_b = &mut recv_task => {
-            match rv_b {
-                Ok(b) => println!("Received {b} messages"),
-                Err(b) => println!("Error receiving messages {b:?}")
-            }
+        recv_join_result = &mut recv_task => {
             send_task.abort();
+            recv_join_result
+                .context(format!("Panic in a websocket recv task of {who}"))?
+                .context(format!("Error in a websocket recv task of {who}"))?;
         }
     }
 
@@ -150,36 +147,32 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) -> anyhow::Result
     Ok(())
 }
 
-/// helper to print contents of messages to stdout. Has special treatment for Close.
-fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
+async fn handle_message(
+    msg: api::ClientToServer,
+    device: &TokioMutex<Device>,
+    to_client_sender: &mpsc::Sender<api::ServerToClient>,
+) -> anyhow::Result<()> {
+    use api::ClientToServer as CTS;
     match msg {
-        Message::Text(t) => {
-            println!(">>> {who} sent str: {t:?}");
+        CTS::Status => {
+            let device_status = {
+                let mut device = device.lock().await;
+                device.get_status().await?
+            };
+            to_client_sender
+                .send(api::ServerToClient::Status {
+                    version: api::Version {
+                        hardware: device_status.version.hardware,
+                        firmware: device_status.version.firmware,
+                    },
+                    max_light_level: device_status.max_light_level,
+                })
+                .await?;
         }
-        Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
-        }
-        Message::Close(c) => {
-            if let Some(cf) = c {
-                println!(
-                    ">>> {} sent close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
-                );
-            } else {
-                println!(">>> {who} somehow sent close message without CloseFrame");
-            }
-            return ControlFlow::Break(());
-        }
-
-        Message::Pong(v) => {
-            println!(">>> {who} sent pong with {v:?}");
-        }
-        // You should never need to manually handle Message::Ping, as axum's websocket library
-        // will do so for you automagically by replying with Pong and copying the v according to
-        // spec. But if you need the contents of the pings you can see them here.
-        Message::Ping(v) => {
-            println!(">>> {who} sent ping with {v:?}");
-        }
+        CTS::StartMonitoring => {}
+        CTS::StopMonitoring => {}
+        CTS::SendHidReport { .. } => {}
+        CTS::Measure { .. } => {}
     }
-    ControlFlow::Continue(())
+    Ok(())
 }

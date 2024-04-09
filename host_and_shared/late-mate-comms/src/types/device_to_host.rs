@@ -7,6 +7,7 @@ pub struct Version {
     pub firmware: u32,
 }
 
+// todo: inline this?
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Status {
     pub version: Version,

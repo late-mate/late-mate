@@ -1,10 +1,13 @@
 use crate::nice_hid;
 
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 pub struct Followup {
     after: u16,
     hid_report: nice_hid::HidReport,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
+#[ts(export)]
 pub enum ClientToServer {
     Status,
     StartMonitoring,
@@ -19,7 +22,19 @@ pub enum ClientToServer {
     },
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
+pub struct Version {
+    pub hardware: u8,
+    pub firmware: u32,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
+#[ts(export)]
 pub enum ServerToClient {
+    Status {
+        version: Version,
+        max_light_level: u32,
+    },
     BackgroundValues {
         max_light_level: u32,
         light_levels: Vec<u32>,
