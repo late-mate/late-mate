@@ -53,8 +53,8 @@ const PRESET_SCENARIOS: PresetScenario[] = [
       start: { type: "mouse", buttons: ["left"] },
       followup: { after_ms: 1, hid_report: { type: "mouse" } },
       after: [
-        { type: "keyboard", modifiers: ["l_ctrl"] },
-        { type: "keyboard", modifiers: ["l_ctrl"], pressed_keys: ["z"] },
+        { type: "keyboard", modifiers: ["l_meta"] },
+        { type: "keyboard", modifiers: ["l_meta"], pressed_keys: ["z"] },
         { type: "keyboard" },
       ],
     },
@@ -146,8 +146,9 @@ const START_CHART_CONFIG: ChartConfiguration<"scatter", Point[], string> = {
     datasets: [
       {
         data: [],
-        pointRadius: 5,
+        pointRadius: 3,
         pointBorderWidth: 0,
+        pointBackgroundColor: "rgba(55,162,235,0.4)",
       },
     ],
   },
@@ -187,14 +188,18 @@ export class MeasurePage extends Page {
   private readonly inputId = "input-measure-scenario";
   private readonly sendId = "input-measure-send";
   private readonly sendX10Id = "input-measure-send-x10";
+  private readonly enoughId = "input-measure-enough";
   private readonly chartAreaId = "measure-chart-area";
   private readonly currentCanvasId = "measure-current-canvas";
+  private readonly statContainerId = "measure-stat-container";
   private readonly statCanvasId = "measure-stat-canvas";
 
   private readonly inputEl: HTMLTextAreaElement;
   private readonly sendEl: HTMLButtonElement;
   private readonly sendX10El: HTMLButtonElement;
+  private readonly enoughEl: HTMLButtonElement;
   private readonly chartAreaEl: HTMLDivElement;
+  private readonly statContainerEl: HTMLDivElement;
 
   private readonly currentChart: Chart<"line", Point[], string>;
   private readonly statChart: Chart<"scatter", Point[], string>;
@@ -222,8 +227,14 @@ export class MeasurePage extends Page {
     this.sendX10El = assert(
       document.getElementById(this.sendX10Id),
     ) as HTMLButtonElement;
+    this.enoughEl = assert(
+      document.getElementById(this.enoughId),
+    ) as HTMLButtonElement;
     this.chartAreaEl = assert(
       document.getElementById(this.chartAreaId),
+    ) as HTMLDivElement;
+    this.statContainerEl = assert(
+      document.getElementById(this.statContainerId),
     ) as HTMLDivElement;
 
     for (const { buttonId, scenario } of PRESET_SCENARIOS) {
@@ -261,7 +272,7 @@ export class MeasurePage extends Page {
       }
 
       this.x10InFlight = true;
-      let toGo = 10;
+      let toGo = 50;
       const sendNext = () => {
         if (toGo === 0) {
           this.x10InFlight = false;
@@ -273,6 +284,26 @@ export class MeasurePage extends Page {
         setTimeout(sendNext, 500);
       };
       sendNext();
+    });
+
+    this.enoughEl.addEventListener("click", () => {
+      const newImage = this.statChart.toBase64Image();
+      const img = document.createElement("img");
+      img.src = newImage;
+      img.style.width = this.statChart.canvas.style.width;
+      img.style.height = this.statChart.canvas.style.height;
+
+      // insert img as a second child of the container
+      this.statContainerEl.insertBefore(
+        img,
+        this.statContainerEl.childNodes[1] ?? null,
+      );
+
+      this.currentChart.data.datasets![0].data = [];
+      this.currentChart.update("none");
+
+      this.statChart.data.datasets![0].data = [];
+      this.statChart.update("none");
     });
 
     this.currentChart = new Chart(

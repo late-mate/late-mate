@@ -98,18 +98,22 @@
         <div class="mt-1 flex gap-1 self-end">
           <button class="btn" id="input-measure-send">Send</button>
           <button class="btn" id="input-measure-send-x10">Send Harder</button>
+          <button class="btn" id="input-measure-enough">Enough</button>
         </div>
       </div>
 
       <div
-        class="mt-4 flex h-80 w-full flex-col px-2 md:flex-row"
+        class="my-4 flex h-80 w-full flex-col px-2 md:flex-row"
         id="measure-chart-area"
       >
         <div class="relative flex w-full justify-center md:w-1/2">
           <canvas id="measure-current-canvas"></canvas>
         </div>
-        <div class="relative flex w-full justify-center md:w-1/2">
-          <canvas id="measure-stat-canvas"></canvas>
+        <div
+          class="relative flex w-full flex-col gap-2 align-middle md:w-1/2"
+          id="measure-stat-container"
+        >
+          <canvas id="measure-stat-canvas" class="aspect-video"></canvas>
         </div>
       </div>
     </div>
