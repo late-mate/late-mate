@@ -230,7 +230,7 @@ struct ProcessedMeasurements {
     /// microsecond, light level
     light_levels: Vec<(u32, u32)>,
     followup_hid_us: Option<u32>,
-    change_us: u32,
+    change_us: Option<u32>,
 }
 
 impl ProcessedMeasurements {
@@ -255,10 +255,6 @@ impl ProcessedMeasurements {
                     ME::HidReport(_) => Some(m.microsecond - first_hid_time),
                 });
 
-        // todo
-        // just set it to the last value!
-        let change_us = 10_000;
-
         let light_levels = measurements
             .iter()
             .skip(first_hid_idx + 1)
@@ -266,7 +262,9 @@ impl ProcessedMeasurements {
                 ME::LightLevel(l) => Some((m.microsecond - first_hid_time, l)),
                 ME::HidReport(_) => None,
             })
-            .collect();
+            .collect::<Vec<_>>();
+
+        let change_us = find_changepoint(&light_levels);
 
         Ok(ProcessedMeasurements {
             light_levels,
@@ -274,4 +272,78 @@ impl ProcessedMeasurements {
             change_us,
         })
     }
+}
+
+fn find_changepoint(light_levels: &[(u32, u32)]) -> Option<u32> {
+    // it's unlikely there's any meaningful change in the first 7ms,
+    // so I use it to infer the range of noise
+    let noise_window = 7_000;
+    // require at least 2 noise ranges between start and end to detect change
+    let change_detect_gap_multiplier = 2;
+    // but for the actual moment of change, use just one noise range
+    let change_gap_multiplier = 1;
+
+    let (start_min, start_max) = light_levels
+        .iter()
+        .copied()
+        .take_while(|(us, _)| *us < noise_window)
+        .fold((u32::MAX, 0u32), |(min, max), (_, light_level)| {
+            (light_level.min(min), light_level.max(max))
+        });
+
+    dbg!(start_min, start_max);
+
+    let last_time = light_levels
+        .last()
+        .expect("light_levels shouldn't be empty at this point")
+        .0;
+
+    let (end_min, end_max) = light_levels
+        .iter()
+        .rev()
+        .copied()
+        .take_while(|(us, _)| *us > (last_time - noise_window))
+        .fold((u32::MAX, 0u32), |(min, max), (_, light_level)| {
+            (light_level.min(min), light_level.max(max))
+        });
+
+    dbg!(end_min, end_max);
+
+    let change_detect_gap = (start_max - start_min) * change_detect_gap_multiplier;
+
+    if !(end_min > (start_max + change_detect_gap) || start_min > (end_max + change_detect_gap)) {
+        println!("no change detected");
+        return None;
+    }
+
+    let change_gap = (start_max - start_min) * change_gap_multiplier;
+    let change_point = if end_min > start_max {
+        // raising signal
+        let threshold = start_max + change_gap;
+        light_levels.iter().copied().find_map(|(us, light_level)| {
+            if light_level > threshold {
+                Some(us)
+            } else {
+                None
+            }
+        })
+    } else {
+        // dropping signal, non-changing signal is already discarded above
+        // there must be enough between the ends for this sum to be always positive
+        assert!(
+            start_min > change_gap,
+            "expected started_min ({start_min}) > change_gap ({change_gap})"
+        );
+        let threshold = start_min - change_gap;
+        light_levels.iter().copied().find_map(|(us, light_level)| {
+            if light_level < threshold {
+                Some(us)
+            } else {
+                None
+            }
+        })
+    };
+    dbg!(change_point);
+
+    Some(change_point.expect("the signal must cross the threshold given the above"))
 }

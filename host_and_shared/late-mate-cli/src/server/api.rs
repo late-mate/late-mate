@@ -48,6 +48,6 @@ pub enum ServerToClient {
         /// microsecond, light level
         light_levels: Vec<(u32, u32)>,
         followup_hid_us: Option<u32>,
-        change_us: u32,
+        change_us: Option<u32>,
     },
 }

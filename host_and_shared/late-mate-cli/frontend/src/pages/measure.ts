@@ -1,12 +1,12 @@
 import type { WsServer } from "../WsServer.ts";
 import { Page } from "./page.ts";
-import { ClientToServer } from "../generated/types/ClientToServer.ts";
 import stringify from "json-stringify-pretty-compact";
 
 import Chart, { ChartConfiguration, Point } from "chart.js/auto";
 import annotationPlugin from "chartjs-plugin-annotation";
-import { ServerToClient } from "../generated/types/ServerToClient.ts";
 import { assert } from "../utils.ts";
+import { ClientToServer } from "../generated/types/ClientToServer.ts";
+import { ServerToClient } from "../generated/types/ServerToClient.ts";
 
 Chart.register(annotationPlugin);
 
@@ -18,6 +18,17 @@ type PresetScenario = {
 const PRESET_SCENARIOS: PresetScenario[] = [
   {
     buttonId: "measure-scenario-a",
+    // scenario: {
+    //   type: "measure",
+    //   duration_ms: 300,
+    //   before: [],
+    //   start: { type: "keyboard", pressed_keys: ["a"] },
+    //   followup: {
+    //     after_ms: 1,
+    //     hid_report: { type: "keyboard" },
+    //   },
+    //   after: [],
+    // },
     scenario: {
       type: "measure",
       duration_ms: 300,
@@ -27,20 +38,23 @@ const PRESET_SCENARIOS: PresetScenario[] = [
         after_ms: 1,
         hid_report: { type: "keyboard" },
       },
-      after: [],
+      after: [
+        { type: "keyboard", pressed_keys: ["backspace"] },
+        { type: "keyboard" },
+      ],
     },
   },
   {
     buttonId: "measure-scenario-draw",
     scenario: {
       type: "measure",
-      duration_ms: 300,
-      before: [{ type: "mouse", buttons: ["left"] }],
-      start: { type: "mouse", buttons: ["left"], x: 120 },
-      followup: null,
+      duration_ms: 150,
+      before: [],
+      start: { type: "mouse", buttons: ["left"] },
+      followup: { after_ms: 1, hid_report: { type: "mouse" } },
       after: [
-        { type: "mouse" },
-        { type: "keyboard", pressed_keys: ["z"], modifiers: ["l_meta"] },
+        { type: "keyboard", modifiers: ["l_ctrl"] },
+        { type: "keyboard", modifiers: ["l_ctrl"], pressed_keys: ["z"] },
         { type: "keyboard" },
       ],
     },
@@ -221,7 +235,7 @@ export class MeasurePage extends Page {
       );
     }
 
-    this.chartAreaEl.classList.add("hidden");
+    //this.chartAreaEl.classList.add("hidden");
 
     this.sendEl.addEventListener("click", () => {
       if (this.requestInFlight || this.x10InFlight || !this.inputEl.value) {
@@ -256,7 +270,7 @@ export class MeasurePage extends Page {
 
         toGo -= 1;
         this.sendRequest(scenario);
-        setTimeout(sendNext, scenario.duration_ms * 1.5);
+        setTimeout(sendNext, 500);
       };
       sendNext();
     });
@@ -296,29 +310,37 @@ export class MeasurePage extends Page {
   processMeasurement(msg: ServerToClient & { type: "measurement" }) {
     this.requestInFlight = false;
 
-    this.currentChart.data.datasets![0].data = msg.light_levels.map((x) => ({
-      x: x[0] / 1000,
-      y: (x[1] / msg.max_light_level) * 100,
-    }));
-
-    let annotation = (
-      this.currentChart.options.plugins!.annotation!.annotations as any
-    )["change"];
-    annotation["xMin"] = msg.change_us / 1000;
-    annotation["xMax"] = msg.change_us / 1000;
-
     if (this.isScenarioNew) {
       this.isScenarioNew = false;
       this.statChart.data.datasets![0].data = [];
     }
 
+    this.currentChart.data.datasets![0].data = msg.light_levels.map(
+      (x: [number, number]) => ({
+        x: x[0] / 1000,
+        y: (x[1] / msg.max_light_level) * 100,
+      }),
+    );
+
+    let annotation = (
+      this.currentChart.options.plugins!.annotation!.annotations as any
+    )["change"];
+
+    if (msg.change_us === null) {
+      annotation.display = false;
+    } else {
+      annotation.display = true;
+      annotation.xMin = msg.change_us / 1000;
+      annotation.xMax = msg.change_us / 1000;
+
+      this.statChart.data.datasets![0].data.push({
+        x: msg.change_us / 1000,
+        y: Math.random(),
+      });
+    }
+
     this.currentChart.options.scales!.x!.max = this.scenarioDuration;
     this.statChart.options.scales!.x!.max = this.scenarioDuration;
-
-    this.statChart.data.datasets![0].data.push({
-      x: msg.change_us / 1000,
-      y: Math.random(),
-    });
 
     this.currentChart.update("none");
     this.statChart.update("none");

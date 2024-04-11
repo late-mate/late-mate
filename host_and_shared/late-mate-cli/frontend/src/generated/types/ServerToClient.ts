@@ -16,5 +16,5 @@ export type ServerToClient =
        */
       light_levels: Array<[number, number]>;
       followup_hid_us: number | null;
-      change_us: number;
+      change_us: number | null;
     };

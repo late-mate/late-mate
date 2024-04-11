@@ -101,9 +101,16 @@
         </div>
       </div>
 
-      <div class="flex h-80 w-full flex-col" id="measure-chart-area">
-        <canvas id="measure-current-canvas" class="w-1/2"></canvas>
-        <canvas id="measure-stat-canvas" class="w-1/2"></canvas>
+      <div
+        class="mt-4 flex h-80 w-full flex-col px-2 md:flex-row"
+        id="measure-chart-area"
+      >
+        <div class="relative flex w-full justify-center md:w-1/2">
+          <canvas id="measure-current-canvas"></canvas>
+        </div>
+        <div class="relative flex w-full justify-center md:w-1/2">
+          <canvas id="measure-stat-canvas"></canvas>
+        </div>
       </div>
     </div>
 
