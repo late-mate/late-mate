@@ -11,7 +11,7 @@ mod tasks;
 
 use crate::measurement_buffer::Buffer;
 use crate::tasks::light_sensor::LightReading;
-use crate::tasks::{light_sensor, reactor, usb};
+use crate::tasks::{indicator_led, light_sensor, reactor, usb};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
@@ -132,6 +132,14 @@ pub async fn main(spawner: Spawner) {
         &HID_SIGNAL,
         &MEASUREMENT_BUFFER,
     );
+
+    indicator_led::init(
+        &spawner,
+        LIGHT_READINGS.subscriber().unwrap(),
+        p.PWM_CH1,
+        p.PIN_2,
+    );
+
     //
     // let adc = adc::Adc::new(p.ADC, AdcIrqs, adc::Config::default());
     // let temp_chan = adc::Channel::new_temp_sensor(p.ADC_TEMP_SENSOR);
@@ -140,9 +148,6 @@ pub async fn main(spawner: Spawner) {
     //
     core::future::pending::<()>().await;
 }
-
-// TODO: https://docs.embassy.dev/embassy-sync/git/default/pubsub/struct.PubSubChannel.html
-//       for the current light level
 
 // TODO:
 // - LED reflecting the light level

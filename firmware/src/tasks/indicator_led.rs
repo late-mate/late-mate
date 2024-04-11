@@ -1,35 +1,60 @@
-// use ads1220::command::{Command, Length, Offset};
-// use ads1220::config::{
-//     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
-//     Vref,
-// };
-// use defmt::info;
-// use embassy_executor::Spawner;
-// use embassy_rp::gpio::{Input, Output, Pull};
-// use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_2, PIN_22, PWM_CH1, SPI0};
-// use embassy_rp::spi;
-// use embassy_rp::spi::{Async, Phase, Polarity, Spi};
-// use embassy_time::Timer;
-// use embassy_rp::pwm::{Config as PwmConfig, Pwm};
-//
-// #[embassy_executor::task]
-// async fn indicator_led_task(mut pwm_channel: PWM_CH1, mut led_pin: Output<'static, PIN_2>) {
-//     let mut c: PwmConfig = Default::default();
-//     c.top = 0x8000;
-//     c.compare_a = 8;
-//     let mut pwm = Pwm::new_output_a(pwm_channel, led_pin, c.clone());
-//
-//     loop {
-//         info!("current LED duty cycle: {}/32768", c.compare_a);
-//         Timer::after_secs(1).await;
-//         c.compare_a = c.compare_a.rotate_left(4);
-//         pwm.set_config(&c);
-//     }
-// }
-//
-// pub fn init(
-//     spawner: &Spawner,
-// ) {
-//
-//     spawner.must_spawn(indicator_led_task(spi, drdy));
-// }
+use crate::LightReadingsSubscriber;
+
+use embassy_executor::Spawner;
+use embassy_futures::join::join;
+use embassy_rp::peripherals::{PIN_2, PWM_CH1};
+use embassy_rp::pwm::{Config as PwmConfig, Pwm};
+
+use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
+use embassy_time::{Duration, Ticker};
+
+#[embassy_executor::task]
+async fn indicator_led_task(
+    mut light_readings_sub: LightReadingsSubscriber,
+    pwm_channel: PWM_CH1,
+    w_led_pin: PIN_2,
+) {
+    let max_pwm = 0x8000;
+    let correction = 0.45f32;
+
+    let mut c: PwmConfig = Default::default();
+    c.top = max_pwm;
+    c.phase_correct = true;
+
+    let mut pwm = Pwm::new_output_a(pwm_channel, w_led_pin, c.clone());
+
+    let mut ticker = Ticker::every(Duration::from_millis(7));
+
+    let fraction = 1. / (MAX_LIGHT_LEVEL as f32) * correction;
+
+    let mut buffer = [0u32; 5];
+    let mut idx = 0;
+
+    loop {
+        let (_, reading) = join(ticker.next(), (&mut light_readings_sub).next_message_pure()).await;
+
+        buffer[idx] = reading.reading;
+        idx += 1;
+        if idx == (buffer.len()) {
+            idx = 0;
+
+            let avg = buffer.iter().sum::<u32>() as f32 / (buffer.len() as f32);
+            c.compare_a = (avg * fraction * (max_pwm as f32)) as u16;
+
+            pwm.set_config(&c);
+        }
+    }
+}
+
+pub fn init(
+    spawner: &Spawner,
+    light_readings_sub: LightReadingsSubscriber,
+    pwm_channel: PWM_CH1,
+    w_led_pin: PIN_2,
+) {
+    spawner.must_spawn(indicator_led_task(
+        light_readings_sub,
+        pwm_channel,
+        w_led_pin,
+    ));
+}
