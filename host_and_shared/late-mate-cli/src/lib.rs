@@ -79,7 +79,7 @@ pub async fn run() -> anyhow::Result<()> {
                     .measure(
                         duration,
                         &start,
-                        followup.as_ref().map(|f| (followup_after.unwrap(), f)),
+                        followup.map(|f| (followup_after.unwrap(), f)),
                     )
                     .await?;
                 for m in measurements {

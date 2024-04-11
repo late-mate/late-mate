@@ -2,8 +2,8 @@ use crate::nice_hid;
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 pub struct Followup {
-    after: u16,
-    hid_report: nice_hid::HidReport,
+    pub after_ms: u16,
+    pub hid_report: nice_hid::HidReport,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
@@ -17,9 +17,11 @@ pub enum ClientToServer {
         hid_report: nice_hid::HidReport,
     },
     Measure {
-        duration: u16,
+        before: Vec<nice_hid::HidReport>,
+        duration_ms: u16,
         start: nice_hid::HidReport,
         followup: Option<Followup>,
+        after: Vec<nice_hid::HidReport>,
     },
 }
 
@@ -43,9 +45,9 @@ pub enum ServerToClient {
     },
     Measurement {
         max_light_level: u32,
-        /// microsecond | light level; None = HID event
-        levels: Vec<(u32, Option<u32>)>,
+        /// microsecond, light level
+        light_levels: Vec<(u32, u32)>,
+        followup_hid_us: Option<u32>,
         change_us: u32,
-        delay_us: u32,
     },
 }

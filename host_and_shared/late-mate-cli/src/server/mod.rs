@@ -22,6 +22,7 @@ use axum::extract::connect_info::ConnectInfo;
 
 use crate::device::Device;
 use futures::{sink::SinkExt, stream::StreamExt};
+use late_mate_comms::Measurement;
 use tokio::sync::{mpsc, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
 
@@ -54,7 +55,7 @@ pub async fn run(device: Device) -> anyhow::Result<()> {
             device: Arc::new(TokioMutex::new(device)),
         }));
 
-    let address = "127.0.0.1:1838";
+    let address = "100.90.116.95:1838";
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .context(format!("Couldn't bind on {address}"))?;
@@ -108,6 +109,8 @@ async fn handle_socket(
         Ok(())
     });
 
+    // todo: recv_task errors (e.g. validation error, a mouse value too big to fit into i8)
+    //       somehow get swallowed, investigate
     let mut recv_task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
         while let Some(msg) = ws_receiver.next().await {
             match msg? {
@@ -137,6 +140,7 @@ async fn handle_socket(
         },
         recv_join_result = &mut recv_task => {
             send_task.abort();
+            // recv_join_result is swallowed here somehow?
             recv_join_result
                 .context(format!("Panic in a websocket recv task of {who}"))?
                 .context(format!("Error in a websocket recv task of {who}"))?;
@@ -175,7 +179,99 @@ async fn handle_message(
             let mut device = device.lock().await;
             device.send_hid_report(&hid_report).await?;
         }
-        CTS::Measure { .. } => {}
+        CTS::Measure {
+            before,
+            duration_ms,
+            start,
+            followup,
+            after,
+        } => {
+            let (max_light_level, measurements) = {
+                let mut device = device.lock().await;
+
+                let status = device.get_status().await?;
+
+                for report in before {
+                    device.send_hid_report(&report).await?;
+                }
+
+                let measurements = device
+                    .measure(
+                        duration_ms,
+                        &start,
+                        followup.map(|f| (f.after_ms, f.hid_report)),
+                    )
+                    .await?;
+
+                for report in after {
+                    device.send_hid_report(&report).await?;
+                }
+
+                (status.max_light_level, measurements)
+            };
+
+            let processed = ProcessedMeasurements::new(&measurements)?;
+
+            to_client_sender
+                .send(api::ServerToClient::Measurement {
+                    max_light_level,
+                    light_levels: processed.light_levels,
+                    followup_hid_us: processed.followup_hid_us,
+                    change_us: processed.change_us,
+                })
+                .await?;
+        }
     }
     Ok(())
+}
+
+// realigns light_levels so that the start HID event = 0
+struct ProcessedMeasurements {
+    /// microsecond, light level
+    light_levels: Vec<(u32, u32)>,
+    followup_hid_us: Option<u32>,
+    change_us: u32,
+}
+
+impl ProcessedMeasurements {
+    fn new(measurements: &[Measurement]) -> anyhow::Result<Self> {
+        use late_mate_comms::MeasurementEvent as ME;
+
+        let (first_hid_idx, first_hid_time) = measurements
+            .iter()
+            .enumerate()
+            .find_map(|(idx, m)| match m.event {
+                ME::LightLevel(_) => None,
+                ME::HidReport(_) => Some((idx, m.microsecond)),
+            })
+            .context("No HID report in returned measurements")?;
+
+        let followup_hid_us =
+            measurements
+                .iter()
+                .skip(first_hid_idx + 1)
+                .find_map(|m| match m.event {
+                    ME::LightLevel(_) => None,
+                    ME::HidReport(_) => Some(m.microsecond - first_hid_time),
+                });
+
+        // todo
+        // just set it to the last value!
+        let change_us = 10_000;
+
+        let light_levels = measurements
+            .iter()
+            .skip(first_hid_idx + 1)
+            .filter_map(|m| match m.event {
+                ME::LightLevel(l) => Some((m.microsecond - first_hid_time, l)),
+                ME::HidReport(_) => None,
+            })
+            .collect();
+
+        Ok(ProcessedMeasurements {
+            light_levels,
+            followup_hid_us,
+            change_us,
+        })
+    }
 }

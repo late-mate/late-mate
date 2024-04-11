@@ -20,6 +20,8 @@
     "vite": "^5.2.0"
   },
   "dependencies": {
-    "@hotwired/stimulus": "^3.2.2"
+    "chart.js": "^4.4.2",
+    "chartjs-plugin-annotation": "^3.0.1",
+    "json-stringify-pretty-compact": "^4.0.0"
   }
 }

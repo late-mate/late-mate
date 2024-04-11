@@ -177,7 +177,7 @@ impl Device {
         &mut self,
         duration_ms: u16,
         start: &nice_hid::HidReport,
-        followup: Option<(u16, &nice_hid::HidReport)>,
+        followup: Option<(u16, nice_hid::HidReport)>,
     ) -> anyhow::Result<Vec<Measurement>> {
         assert!(duration_ms < 1000);
         let command = HostToDevice::Measure {
@@ -190,7 +190,7 @@ impl Device {
                 after_ms,
                 hid_request: HidRequest {
                     id: self.new_hid_request_id(),
-                    report: report.into(),
+                    report: (&report).into(),
                 },
             }),
         };

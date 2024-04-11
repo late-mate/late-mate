@@ -9,7 +9,9 @@ export type ClientToServer =
   | { type: "send_hid_report"; hid_report: HidReport }
   | {
       type: "measure";
-      duration: number;
+      before: Array<HidReport>;
+      duration_ms: number;
       start: HidReport;
       followup: Followup | null;
+      after: Array<HidReport>;
     };

@@ -12,9 +12,9 @@ export type ServerToClient =
       type: "measurement";
       max_light_level: number;
       /**
-       * microsecond | light level; None = HID event
+       * microsecond, light level
        */
-      levels: Array<[number, number | null]>;
+      light_levels: Array<[number, number]>;
+      followup_hid_us: number | null;
       change_us: number;
-      delay_us: number;
     };

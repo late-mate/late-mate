@@ -21,22 +21,21 @@
       <ul
         class="flex w-full max-w-[32rem] justify-around font-semibold text-white"
       >
-        <li class="cursor-pointer p-2 underline underline-offset-2" data-active>
-          Status
+        <li class="cursor-pointer select-none p-2" id="menu-status">Status</li>
+        <li class="cursor-pointer select-none p-2" id="menu-monitor">
+          Monitor
         </li>
-        <li class="cursor-pointer p-2">Monitor</li>
-        <li class="cursor-pointer p-2">Remote</li>
-        <li class="cursor-pointer p-2">Measure</li>
-        <li class="cursor-pointer p-2">🦆</li>
+        <li class="cursor-pointer select-none p-2" id="menu-remote">Remote</li>
+        <li class="cursor-pointer select-none p-2" id="menu-measure">
+          Measure
+        </li>
+        <li class="cursor-pointer select-none p-2" id="menu-duckradar">🦆📡</li>
       </ul>
     </div>
 
     <!-- Status -->
 
-    <div
-      id="page-status"
-      class="mx-2 mt-4 flex hidden flex-col items-center gap-2"
-    >
+    <div id="page-status" class="mx-2 mt-4 flex flex-col items-center gap-2">
       <button class="btn max-w-28" id="status-load">Load</button>
       <pre id="status-pre"></pre>
     </div>
@@ -45,22 +44,23 @@
 
     <!-- Remote -->
 
-    <div
-      id="page-remote"
-      class="mx-2 mt-4 flex hidden flex-col gap-2 md:flex-row"
-    >
+    <div id="page-remote" class="mx-2 mt-4 flex flex-col gap-2 md:flex-row">
       <div class="flex w-full flex-col items-start">
         <label for="input-mouse">Mouse input</label>
-        <!-- prettier-ignore -->
-        <textarea id="input-mouse" class="block w-full font-mono h-44"></textarea>
+        <textarea
+          id="input-mouse"
+          class="block h-36 w-full font-mono text-lg"
+        ></textarea>
 
         <button class="btn mt-1 self-end" id="input-mouse-send">Send</button>
       </div>
 
       <div class="flex w-full flex-col items-start">
         <label for="input-keyboard-1">Keyboard input #1</label>
-        <!-- prettier-ignore -->
-        <textarea id="input-keyboard-1" class="block w-full font-mono h-44"></textarea>
+        <textarea
+          id="input-keyboard-1"
+          class="block h-36 w-full font-mono text-lg"
+        ></textarea>
 
         <button class="btn mt-1 self-end" id="input-keyboard-1-send">
           Send
@@ -69,12 +69,41 @@
 
       <div class="flex w-full flex-col items-start">
         <label for="input-keyboard-2">Keyboard input #2</label>
-        <!-- prettier-ignore -->
-        <textarea id="input-keyboard-2" class="block w-full font-mono h-44"></textarea>
+        <textarea
+          id="input-keyboard-2"
+          class="block h-36 w-full font-mono text-lg"
+        ></textarea>
 
         <button class="btn mt-1 self-end" id="input-keyboard-2-send">
           Send
         </button>
+      </div>
+    </div>
+
+    <!-- Measure -->
+
+    <div id="page-measure" class="mx-2 mt-4">
+      <div class="flex w-full flex-col items-start">
+        <div class="mb-4 flex gap-2">
+          <button class="btn lowercase" id="measure-scenario-a">a</button>
+          <button class="btn lowercase" id="measure-scenario-draw">draw</button>
+          <button class="btn lowercase" id="measure-scenario-doom">doom</button>
+        </div>
+        <label for="input-measure-scenario">Scenario</label>
+        <textarea
+          id="input-measure-scenario"
+          class="block h-64 w-full font-mono"
+        ></textarea>
+
+        <div class="mt-1 flex gap-1 self-end">
+          <button class="btn" id="input-measure-send">Send</button>
+          <button class="btn" id="input-measure-send-x10">Send Harder</button>
+        </div>
+      </div>
+
+      <div class="flex h-80 w-full flex-col" id="measure-chart-area">
+        <canvas id="measure-current-canvas" class="w-1/2"></canvas>
+        <canvas id="measure-stat-canvas" class="w-1/2"></canvas>
       </div>
     </div>
 
