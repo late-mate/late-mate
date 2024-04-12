@@ -25,7 +25,7 @@
         <li class="menu-btn p-2" id="menu-monitor">Monitor</li>
         <li class="menu-btn p-2" id="menu-remote">Remote</li>
         <li class="menu-btn p-2" id="menu-measure">Measure</li>
-        <li class="menu-btn p-2" id="menu-duckradar">🦆📡</li>
+        <li class="menu-btn p-2 underline-offset-4" id="menu-duck">🦆📡</li>
       </ul>
     </div>
 
@@ -122,6 +122,16 @@
         >
           <canvas id="measure-stat-canvas" class="aspect-video"></canvas>
         </div>
+      </div>
+    </div>
+
+    <!-- Duck -->
+
+    <div id="page-duck" class="mx-2 mt-4 flex flex-col items-center gap-2">
+      <button class="btn mt-1" id="duck-find">Find the duck</button>
+
+      <div id="duck-container" class="relative h-[70vh] w-full md:w-1/2">
+        <canvas id="duck-canvas"></canvas>
       </div>
     </div>
 

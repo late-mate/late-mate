@@ -1,6 +1,6 @@
 import { assert } from "../utils.ts";
 
-const MENU_ACTIVE_CLASSES = ["underline", "underline-offset-2"];
+const MENU_ACTIVE_CLASSES = ["underline"];
 
 export abstract class Page {
   abstract readonly slug: string;

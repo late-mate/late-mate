@@ -8,6 +8,6 @@
     }
 
     .menu-btn {
-        @apply cursor-pointer select-none touch-manipulation;
+        @apply cursor-pointer select-none touch-manipulation underline-offset-2;
     }
 }

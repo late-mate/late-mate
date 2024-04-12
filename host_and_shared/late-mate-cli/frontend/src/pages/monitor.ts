@@ -22,7 +22,7 @@ export class MonitorPage extends Page {
       data: {
         datasets: [
           {
-            borderWidth: 1,
+            borderWidth: 2,
             pointStyle: false,
             pointRadius: 0,
             data: [],
@@ -69,7 +69,7 @@ export class MonitorPage extends Page {
     });
 
     this.server.subscribe((msg) => {
-      if (msg.type === "background_light_level") {
+      if (msg.type === "background_light_level" && this.isShown) {
         if (this.chart.data.datasets![0].data.length >= 500) {
           this.chart.data.datasets![0].data.shift();
         }
