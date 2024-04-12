@@ -1,14 +1,14 @@
 import type { WsServer } from "../WsServer.ts";
 import { Page } from "./page.ts";
 import { assert } from "../utils.ts";
-import Chart, { ChartConfiguration, Point } from "chart.js/auto";
+import Chart, { Point } from "chart.js/auto";
 
 export class MonitorPage extends Page {
   readonly slug = "monitor";
 
   private readonly chartId = "monitor-chart-canvas";
   private readonly chartEl: HTMLCanvasElement;
-  private readonly chart: Chart<"line", any, string>;
+  private readonly chart: Chart<"line", Point[], string>;
 
   constructor(private readonly server: WsServer) {
     super("menu-monitor", "page-monitor");
