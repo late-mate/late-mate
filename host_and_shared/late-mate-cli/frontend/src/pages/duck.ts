@@ -1,7 +1,6 @@
 import type { WsServer } from "../WsServer.ts";
 import { Page } from "./page.ts";
 import { assert } from "../utils.ts";
-import stringify from "json-stringify-pretty-compact";
 
 const THRESHOLD = 0.1;
 
@@ -31,8 +30,10 @@ export class DuckPage extends Page {
       document.getElementById(this.duckFindId),
     ) as HTMLButtonElement;
 
-    this.duckCanvas.width = this.duckContainer.clientWidth;
-    this.duckCanvas.height = this.duckContainer.clientHeight;
+    this.duckCanvas.width = this.duckContainer.clientWidth * 2;
+    this.duckCanvas.height = this.duckContainer.clientHeight * 2;
+    this.duckCanvas.style.width = `${this.duckContainer.clientWidth}px`;
+    this.duckCanvas.style.height = `${this.duckContainer.clientHeight}px`;
 
     this.duckCtx = assert(this.duckCanvas.getContext("2d"));
 
@@ -72,7 +73,7 @@ export class DuckPage extends Page {
 
   // measurements come at 50hz; 25Hz sweep should be safe
   private readonly sweepDelay = 1000 / 25;
-  private readonly sweepStep = 20;
+  private readonly sweepStep = 40;
 
   find() {
     console.log("find");
@@ -93,9 +94,11 @@ export class DuckPage extends Page {
         return;
       }
 
+      console.log(this.lastSeenLight);
+
       if (this.lastSeenLight > THRESHOLD) {
         clearInterval(xInterval);
-        console.log("found the duck at x =", x);
+        console.log("duck found at x =", x);
         this.sweepY(x);
         return;
       }
@@ -137,7 +140,7 @@ export class DuckPage extends Page {
 
       if (this.lastSeenLight > THRESHOLD) {
         clearInterval(yInterval);
-        console.log("found the duck at y =", y);
+        console.log("duck found at y =", y);
         this.duckFound(x, y);
         return;
       }
@@ -168,7 +171,7 @@ export class DuckPage extends Page {
     this.duckCtx.fillStyle = "black";
     this.duckCtx.fillRect(0, 0, this.duckCanvas.width, this.duckCanvas.height);
 
-    this.duckCtx.font = "30px serif";
+    this.duckCtx.font = "100px serif";
     this.duckCtx.fillText("🦆", x - this.sweepStep, y - this.sweepStep);
   }
 }
