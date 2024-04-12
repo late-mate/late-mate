@@ -332,10 +332,23 @@ impl ProcessedMeasurements {
             })
             .collect::<Vec<_>>();
 
-        let change_us = find_changepoint(&light_levels);
+        // todo: For some reason (channel shenanigans?), sometimes I get a "tail" (?)
+        //       in the beginning of the values (a tuple with an unreasonably high time).
+        //       This just filters out the tail
+        let mut filtered_light_levels = Vec::with_capacity(light_levels.len());
+        let mut last_time = light_levels.last().unwrap().0;
+        for entry @ (time, _) in light_levels.into_iter().rev() {
+            if time <= last_time {
+                filtered_light_levels.push(entry)
+            }
+            last_time = time;
+        }
+        filtered_light_levels.reverse();
+
+        let change_us = find_changepoint(&filtered_light_levels);
 
         Ok(ProcessedMeasurements {
-            light_levels,
+            light_levels: filtered_light_levels,
             followup_hid_us,
             change_us,
         })
