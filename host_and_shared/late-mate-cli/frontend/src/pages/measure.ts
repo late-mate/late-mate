@@ -94,7 +94,7 @@ const CURRENT_CHART_INIT_CONFIG: ChartConfiguration<"line", Point[], string> = {
             xMin: 0,
             xMax: 0,
             label: {
-              display: true,
+              display: false,
               content: "Change",
               rotation: 270,
               backgroundColor: "transparent",
@@ -235,7 +235,7 @@ export class MeasurePage extends Page {
       );
     }
 
-    //this.chartAreaEl.classList.add("hidden");
+    this.chartAreaEl.classList.add("hidden");
 
     this.sendEl.addEventListener("click", () => {
       if (this.requestInFlight || this.x10InFlight || !this.inputEl.value) {
