@@ -8,6 +8,8 @@ export abstract class Page {
   readonly menuEl: HTMLElement;
   readonly pageEl: HTMLDivElement;
 
+  isShown: boolean = true;
+
   constructor(menuId: string, pageElementId: string) {
     this.menuEl = assert(document.getElementById(menuId));
     this.pageEl = assert(
@@ -16,11 +18,13 @@ export abstract class Page {
   }
 
   show(): void {
+    this.isShown = true;
     this.pageEl.classList.remove("hidden");
     this.menuEl.classList.add(...MENU_ACTIVE_CLASSES);
   }
 
   hide(): void {
+    this.isShown = false;
     this.pageEl.classList.add("hidden");
     this.menuEl.classList.remove(...MENU_ACTIVE_CLASSES);
   }

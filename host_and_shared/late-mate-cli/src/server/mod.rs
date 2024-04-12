@@ -10,7 +10,6 @@ use axum::{
 use anyhow::Context;
 use std::future::Future;
 use std::sync::Arc;
-use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
     services::ServeDir,
@@ -24,9 +23,9 @@ use axum::extract::connect_info::ConnectInfo;
 use crate::device::Device;
 use futures::{sink::SinkExt, stream::StreamExt};
 use late_mate_comms::Measurement;
-use tokio::sync::{mpsc, Mutex as TokioMutex};
+use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::{mpsc, watch, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
-use tokio::time::sleep;
 
 #[derive(Clone)]
 struct ServerState {
@@ -99,8 +98,53 @@ async fn handle_socket(
         .context(format!("Could not send ping to {who}"))?;
     println!("Pinged {who}");
 
+    let (bg_streaming_enabled_sender, mut bg_streaming_enabled_receiver) = watch::channel(false);
+    let mut bg_receiver = device.lock().await.subscribe_to_background();
+
     let (mut ws_sender, mut ws_receiver) = socket.split();
     let (to_client_sender, mut to_client_receiver) = mpsc::channel::<api::ServerToClient>(4);
+
+    let device_status = device.lock().await.get_status().await?;
+    let max_light_level = device_status.max_light_level;
+
+    let mut bg_light_task: JoinHandle<anyhow::Result<()>> = tokio::spawn({
+        let device = device.clone();
+        let to_client_sender = to_client_sender.clone();
+        async move {
+            // 2 values per ms; 60 fps = 16.6ms/frame; 40 samples per buffer (=50hz) should be OK
+            let buffer_size = 40;
+            let mut buffer: Vec<u32> = Vec::with_capacity(buffer_size);
+            loop {
+                let enabled = *bg_streaming_enabled_receiver.borrow_and_update();
+                if !enabled {
+                    device.lock().await.background_disable();
+                    buffer.clear();
+                    if dbg!(bg_streaming_enabled_receiver.changed().await).is_ok() {
+                        continue;
+                    } else {
+                        println!("all bg_streaming_enabled_sender dropped");
+                        return Ok(());
+                    }
+                }
+                device.lock().await.background_enable();
+                let light_level = match bg_receiver.recv().await {
+                    Ok(x) => x,
+                    Err(RecvError::Lagged(_)) => continue,
+                    e @ Err(_) => e.context("bg_receiver has closed")?,
+                };
+                if buffer.len() == buffer_size {
+                    let avg_light_level =
+                        buffer.iter().map(|x| *x as f64).sum::<f64>() / buffer.len() as f64;
+                    let fraction = avg_light_level / max_light_level as f64;
+                    to_client_sender
+                        .send(api::ServerToClient::BackgroundLightLevel { avg: fraction })
+                        .await?;
+                    buffer.clear();
+                }
+                buffer.push(light_level);
+            }
+        }
+    });
 
     let mut send_task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
         while let Some(msg) = to_client_receiver.recv().await {
@@ -114,11 +158,18 @@ async fn handle_socket(
     // todo: recv_task errors (e.g. validation error, a mouse value too big to fit into i8)
     //       somehow get swallowed, investigate
     let mut recv_task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+        let bg_streaming_enabled_sender = bg_streaming_enabled_sender;
         while let Some(msg) = ws_receiver.next().await {
             match msg? {
                 Message::Text(txt) => {
                     let from_client: api::ClientToServer = serde_json::from_str(&txt)?;
-                    handle_message(from_client, device.as_ref(), &to_client_sender).await?;
+                    handle_message(
+                        from_client,
+                        device.as_ref(),
+                        &to_client_sender,
+                        &bg_streaming_enabled_sender,
+                    )
+                    .await?;
                 }
                 Message::Close(_) => return Ok(()),
                 // shouldn't happen
@@ -129,21 +180,31 @@ async fn handle_socket(
                 Message::Ping(_) => {}
             }
         }
+        println!("recv_task has nothing more to receive, exiting");
         Ok(())
     });
 
     // If any one of the tasks exit, abort the other.
     tokio::select! {
-        send_join_result = &mut send_task => {
+        bg_light_join_result = &mut bg_light_task => {
+            send_task.abort();
             recv_task.abort();
-            send_join_result
+            dbg!(bg_light_join_result)
+                .context(format!("Panic in a bg light level task of {who}"))?
+                .context(format!("Error in a bg light level task of {who}"))?;
+        },
+        send_join_result = &mut send_task => {
+            bg_light_task.abort();
+            recv_task.abort();
+            dbg!(send_join_result)
                 .context(format!("Panic in a websocket send task of {who}"))?
                 .context(format!("Error in a websocket send task of {who}"))?;
         },
         recv_join_result = &mut recv_task => {
+            bg_light_task.abort();
             send_task.abort();
             // recv_join_result is swallowed here somehow?
-            recv_join_result
+            dbg!(recv_join_result)
                 .context(format!("Panic in a websocket recv task of {who}"))?
                 .context(format!("Error in a websocket recv task of {who}"))?;
         }
@@ -157,9 +218,10 @@ async fn handle_message(
     msg: api::ClientToServer,
     device: &TokioMutex<Device>,
     to_client_sender: &mpsc::Sender<api::ServerToClient>,
+    bg_streaming_enabled_sender: &watch::Sender<bool>,
 ) -> anyhow::Result<()> {
     use api::ClientToServer as CTS;
-    match msg {
+    match dbg!(msg) {
         CTS::Status => {
             let device_status = {
                 let mut device = device.lock().await;
@@ -175,8 +237,12 @@ async fn handle_message(
                 })
                 .await?;
         }
-        CTS::StartMonitoring => {}
-        CTS::StopMonitoring => {}
+        CTS::StartMonitoring => {
+            bg_streaming_enabled_sender.send(true)?;
+        }
+        CTS::StopMonitoring => {
+            bg_streaming_enabled_sender.send(false)?;
+        }
         CTS::SendHidReport { hid_report } => {
             let mut device = device.lock().await;
             device.send_hid_report(&hid_report).await?;

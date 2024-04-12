@@ -31,7 +31,7 @@ pub struct Version {
     pub firmware: u32,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
+#[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[ts(export)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerToClient {
@@ -39,9 +39,8 @@ pub enum ServerToClient {
         version: Version,
         max_light_level: u32,
     },
-    BackgroundValues {
-        max_light_level: u32,
-        light_levels: Vec<u32>,
+    BackgroundLightLevel {
+        avg: f64,
     },
     Measurement {
         max_light_level: u32,

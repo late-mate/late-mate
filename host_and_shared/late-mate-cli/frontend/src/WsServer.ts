@@ -5,12 +5,16 @@ export class WsServer {
   private ws: WebSocket;
   isOpen: boolean = false;
   msgListeners: ((msg: ServerToClient) => void)[] = [];
+  openListeners: (() => void)[] = [];
 
   constructor(url: string) {
     this.ws = new WebSocket(url);
     this.ws.addEventListener("open", () => {
       console.log("Connected to the server");
       this.isOpen = true;
+      for (const listener of this.openListeners) {
+        listener();
+      }
     });
 
     this.ws.addEventListener("message", (evt) => {
@@ -46,6 +50,10 @@ export class WsServer {
 
   subscribe(listener: (msg: ServerToClient) => void) {
     this.msgListeners.push(listener);
+  }
+
+  subscribeToOpen(listener: () => void) {
+    this.openListeners.push(listener);
   }
 
   // unsubscribe(listener: (msg: ServerToClient) => void) {

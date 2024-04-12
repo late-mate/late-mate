@@ -64,7 +64,7 @@ pub async fn bg_channel_loop(
                 Ok(_) => (),
                 Err(_) => {
                     // all receivers were dropped, but they might rejoin later
-                    // todo: maybe I should stop here?
+                    // todo: maybe I should stop here? or maybe just disable the loop?
                     continue;
                 }
             },
@@ -165,12 +165,23 @@ impl Device {
 
     // todo: detect drop or stop subscribing in some way?
     pub fn subscribe_to_background(&mut self) -> broadcast::Receiver<u32> {
-        let receiver = self.bg_light.sender.subscribe();
+        self.bg_light.sender.subscribe()
+    }
+
+    // todo: this doesn't actually help to handle multiple pages open at once,
+    //       rework this completely
+    pub fn background_enable(&mut self) {
         self.bg_light
             .is_active_sender
             .send(true)
             .expect("is_active channel must be opened here");
-        receiver
+    }
+
+    pub fn background_disable(&mut self) {
+        self.bg_light
+            .is_active_sender
+            .send(false)
+            .expect("is_active channel must be opened here");
     }
 
     pub async fn measure(

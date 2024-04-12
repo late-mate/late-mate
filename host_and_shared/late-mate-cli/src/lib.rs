@@ -107,6 +107,7 @@ pub async fn run() -> anyhow::Result<()> {
 
 pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
     let mut receiver = device.subscribe_to_background();
+    device.background_enable();
 
     // 120hz, no point streaming faster
     let mut interval = interval(Duration::from_millis(1000 / 120));

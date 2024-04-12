@@ -6,4 +6,8 @@
     .btn {
         @apply bg-[#221830] px-4 py-2.5 text-center text-sm uppercase text-white cursor-pointer touch-manipulation;
     }
+
+    .menu-btn {
+        @apply cursor-pointer select-none touch-manipulation;
+    }
 }

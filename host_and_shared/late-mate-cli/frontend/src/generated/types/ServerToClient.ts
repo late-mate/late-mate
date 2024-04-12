@@ -3,11 +3,7 @@ import type { Version } from "./Version";
 
 export type ServerToClient =
   | { type: "status"; version: Version; max_light_level: number }
-  | {
-      type: "background_values";
-      max_light_level: number;
-      light_levels: Array<number>;
-    }
+  | { type: "background_light_level"; avg: number }
   | {
       type: "measurement";
       max_light_level: number;

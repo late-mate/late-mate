@@ -18,20 +18,9 @@ type PresetScenario = {
 const PRESET_SCENARIOS: PresetScenario[] = [
   {
     buttonId: "measure-scenario-a",
-    // scenario: {
-    //   type: "measure",
-    //   duration_ms: 300,
-    //   before: [],
-    //   start: { type: "keyboard", pressed_keys: ["a"] },
-    //   followup: {
-    //     after_ms: 1,
-    //     hid_report: { type: "keyboard" },
-    //   },
-    //   after: [],
-    // },
     scenario: {
       type: "measure",
-      duration_ms: 300,
+      duration_ms: 150,
       before: [],
       start: { type: "keyboard", pressed_keys: ["a"] },
       followup: {
@@ -63,7 +52,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     buttonId: "measure-scenario-doom",
     scenario: {
       type: "measure",
-      duration_ms: 300,
+      duration_ms: 150,
       before: [],
       start: { type: "mouse", y: -80 },
       followup: null,
@@ -296,7 +285,7 @@ export class MeasurePage extends Page {
       // insert img as a second child of the container
       this.statContainerEl.insertBefore(
         img,
-        this.statContainerEl.childNodes[1] ?? null,
+        this.statContainerEl.childNodes[2] ?? null,
       );
 
       this.currentChart.data.datasets![0].data = [];

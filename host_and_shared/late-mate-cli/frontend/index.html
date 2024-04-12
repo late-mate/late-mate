@@ -21,15 +21,11 @@
       <ul
         class="flex w-full max-w-[32rem] justify-around font-semibold text-white"
       >
-        <li class="cursor-pointer select-none p-2" id="menu-status">Status</li>
-        <li class="cursor-pointer select-none p-2" id="menu-monitor">
-          Monitor
-        </li>
-        <li class="cursor-pointer select-none p-2" id="menu-remote">Remote</li>
-        <li class="cursor-pointer select-none p-2" id="menu-measure">
-          Measure
-        </li>
-        <li class="cursor-pointer select-none p-2" id="menu-duckradar">🦆📡</li>
+        <li class="menu-btn p-2" id="menu-status">Status</li>
+        <li class="menu-btn p-2" id="menu-monitor">Monitor</li>
+        <li class="menu-btn p-2" id="menu-remote">Remote</li>
+        <li class="menu-btn p-2" id="menu-measure">Measure</li>
+        <li class="menu-btn p-2" id="menu-duckradar">🦆📡</li>
       </ul>
     </div>
 
@@ -41,6 +37,17 @@
     </div>
 
     <!-- Monitor -->
+
+    <div id="page-monitor" class="mx-2 mt-4 flex flex-col items-center gap-2">
+      <div
+        class="my-4 flex h-80 w-full justify-center px-2"
+        id="monitor-chart-area"
+      >
+        <div class="relative w-full md:w-1/2">
+          <canvas id="monitor-chart-canvas"></canvas>
+        </div>
+      </div>
+    </div>
 
     <!-- Remote -->
 

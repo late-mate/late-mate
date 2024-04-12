@@ -4,11 +4,13 @@ import { StatusPage } from "./pages/status.ts";
 import { RemotePage } from "./pages/remote.ts";
 import { Page } from "./pages/page.ts";
 import { MeasurePage } from "./pages/measure.ts";
+import { MonitorPage } from "./pages/monitor.ts";
 
 const server = new WsServer("ws://100.90.116.95:1838/ws");
 
 const PAGES: Page[] = [
   new StatusPage(server),
+  new MonitorPage(server),
   new RemotePage(server),
   new MeasurePage(server),
 ];
