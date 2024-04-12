@@ -64,7 +64,7 @@ pub async fn bg_channel_loop(
                 Ok(_) => (),
                 Err(_) => {
                     // all receivers were dropped, but they might rejoin later
-                    // todo: maybe I should stop here? or maybe just disable the loop?
+                    // todo: maybe I should stop here?
                     continue;
                 }
             },

@@ -221,7 +221,7 @@ async fn handle_message(
     bg_streaming_enabled_sender: &watch::Sender<bool>,
 ) -> anyhow::Result<()> {
     use api::ClientToServer as CTS;
-    match dbg!(msg) {
+    match msg {
         CTS::Status => {
             let device_status = {
                 let mut device = device.lock().await;
@@ -337,6 +337,7 @@ impl ProcessedMeasurements {
         //       This just filters out the tail
         let mut filtered_light_levels = Vec::with_capacity(light_levels.len());
         let mut last_time = light_levels.last().unwrap().0;
+        let initial_light_levels_len = light_levels.len();
         for entry @ (time, _) in light_levels.into_iter().rev() {
             if time <= last_time {
                 filtered_light_levels.push(entry)
@@ -344,6 +345,11 @@ impl ProcessedMeasurements {
             last_time = time;
         }
         filtered_light_levels.reverse();
+
+        let filtered_out = initial_light_levels_len - filtered_light_levels.len();
+        if filtered_out > 0 {
+            dbg!(filtered_out);
+        }
 
         let change_us = find_changepoint(&filtered_light_levels);
 
