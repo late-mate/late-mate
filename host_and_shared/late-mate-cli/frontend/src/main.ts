@@ -7,14 +7,16 @@ import { MeasurePage } from "./pages/measure.ts";
 import { MonitorPage } from "./pages/monitor.ts";
 import { DuckPage } from "./pages/duck.ts";
 
-const server = new WsServer("ws://100.90.116.95:1838/ws");
+const wsUrl = new URL("./ws", location.href);
+wsUrl.protocol = wsUrl.protocol.replace("http", "ws");
+const server = new WsServer(wsUrl.toString());
 
 const PAGES: Page[] = [
   new StatusPage(server),
   new MonitorPage(server),
   new RemotePage(server),
   new MeasurePage(server),
-  new DuckPage(server),
+  new DuckPage(server)
 ];
 
 // Routing

@@ -12,10 +12,7 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::{net::SocketAddr, path::PathBuf};
-use tower_http::{
-    services::ServeDir,
-    trace::{DefaultMakeSpan, TraceLayer},
-};
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -42,12 +39,14 @@ pub async fn run(device: Device, interface: IpAddr, port: u16) -> anyhow::Result
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+    let _assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
 
     // build our application with some routes
     let app = Router::new()
-        .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
-        .route("/ws", get(ws_handler))
+        //.fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
+        .route("/ws", get(ws_handler));
+
+    let app = app
         // logging so we can see what's going on
         .layer(
             TraceLayer::new_for_http()
