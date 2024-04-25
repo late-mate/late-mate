@@ -9,6 +9,7 @@ use axum::{
 
 use anyhow::Context;
 use std::future::Future;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
@@ -32,7 +33,7 @@ struct ServerState {
     device: Arc<TokioMutex<Device>>,
 }
 
-pub async fn run(device: Device) -> anyhow::Result<()> {
+pub async fn run(device: Device, interface: IpAddr, port: u16) -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -56,10 +57,10 @@ pub async fn run(device: Device) -> anyhow::Result<()> {
             device: Arc::new(TokioMutex::new(device)),
         }));
 
-    let address = "100.90.116.95:1838";
-    let listener = tokio::net::TcpListener::bind(address)
+    let socket_addr = SocketAddr::from((interface, port));
+    let listener = tokio::net::TcpListener::bind(&socket_addr)
         .await
-        .context(format!("Couldn't bind on {address}"))?;
+        .context(format!("Couldn't bind on {socket_addr}"))?;
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(
         listener,

@@ -5,6 +5,7 @@ pub mod server;
 use crate::device::Device;
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
+use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::time::interval;
@@ -23,7 +24,12 @@ enum Command {
     /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
     MonitorBackground,
     /// Run an http/websocket server
-    RunServer,
+    RunServer {
+        #[arg(long, default_value = "127.0.0.1")]
+        interface: IpAddr,
+        #[arg(long, default_value = "9118")]
+        port: u16,
+    },
     /// Send HID reports to the device. Accepts a list of JSON-encoded HID report structures
     SendHidReports {
         #[arg(value_parser(parse_hid_report))]
@@ -86,8 +92,8 @@ pub async fn run() -> anyhow::Result<()> {
                     println!("{m:?}");
                 }
             }
-            Command::RunServer => {
-                server::run(device).await?;
+            Command::RunServer { interface, port } => {
+                server::run(device, interface, port).await?;
             }
         };
         Ok::<(), anyhow::Error>(())
