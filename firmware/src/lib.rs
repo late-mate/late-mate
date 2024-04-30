@@ -7,6 +7,7 @@ use defmt::info;
 use {defmt_rtt as _, panic_probe as _};
 
 mod measurement_buffer;
+mod serial_number;
 mod tasks;
 
 use crate::measurement_buffer::Buffer;
@@ -89,8 +90,8 @@ pub static HID_SIGNAL: HidSignal = Signal::new();
 pub type MeasurementBuffer = Mutex<RawMutex, Buffer>;
 pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(Buffer::new());
 
-const ADDR_OFFSET: u32 = 0x100000;
-const FLASH_SIZE: usize = 2 * 1024 * 1024;
+// Must be equal to the size of the flash chip. Pico uses a 2MB chip
+pub const FLASH_SIZE: usize = 2 * 1024 * 1024;
 
 pub async fn main(spawner: Spawner) {
     info!("Late Mate is booting up");
@@ -98,23 +99,12 @@ pub async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     // per https://github.com/embassy-rs/embassy/blob/56a7b10064b830b1be1933085a5845d0d6be5f2e/examples/rp/src/bin/flash.rs#L21C1-L25C35:
-    // add some delay to give an attached debug probe time to parse the
-    // defmt RTT header. Reading that header might touch flash memory, which
-    // interferes with flash write operations.
-    // https://github.com/knurling-rs/defmt/pull/683
+    // apparently there is a race between flash access and the debug probe, wait a bit just in case
     Timer::after_millis(10).await;
 
+    let serial_number = serial_number::read(p.FLASH);
+
     // todo: clocks?
-
-    let mut flash =
-        embassy_rp::flash::Flash::<_, embassy_rp::flash::Blocking, FLASH_SIZE>::new_blocking(
-            p.FLASH,
-        );
-
-    // Get unique id
-    let mut uid = [0; 8];
-    flash.blocking_unique_id(&mut uid).unwrap();
-    info!("unique id: 0x{:x}", uid);
 
     let clk = p.PIN_18;
     let mosi = p.PIN_19;
@@ -142,6 +132,7 @@ pub async fn main(spawner: Spawner) {
         &COMMS_TO_HOST,
         &HID_SIGNAL,
         &MEASUREMENT_BUFFER,
+        serial_number,
     );
 
     reactor::init(
@@ -152,6 +143,7 @@ pub async fn main(spawner: Spawner) {
         LIGHT_READINGS.subscriber().unwrap(),
         &HID_SIGNAL,
         &MEASUREMENT_BUFFER,
+        serial_number,
     );
 
     indicator_led::init(

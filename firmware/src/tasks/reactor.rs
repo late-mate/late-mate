@@ -1,4 +1,5 @@
 use crate::measurement_buffer::MAX_MEASUREMENT_DURATION;
+use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
     CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, MeasurementBuffer,
@@ -61,6 +62,7 @@ async fn reactor_task(
     mut light_readings_sub: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
     measurement_buffer: &'static MeasurementBuffer,
+    serial_number: &'static SerialNumber,
 ) {
     defmt::info!("starting reactor loop");
     loop {
@@ -72,6 +74,7 @@ async fn reactor_task(
                         firmware: FIRMWARE_VERSION,
                     },
                     max_light_level: MAX_LIGHT_LEVEL,
+                    serial_number: serial_number.bytes(),
                 });
                 comms_to_host.send(status).await;
             }
@@ -210,6 +213,7 @@ pub fn init(
     light_readings_sub_measure: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
     measurement_buffer: &'static MeasurementBuffer,
+    serial_number: &'static SerialNumber,
 ) {
     spawner.must_spawn(bg_measurement_loop_task(
         comms_to_host,
@@ -221,5 +225,6 @@ pub fn init(
         light_readings_sub_measure,
         hid_signal,
         measurement_buffer,
+        serial_number,
     ));
 }

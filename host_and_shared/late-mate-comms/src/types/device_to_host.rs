@@ -12,6 +12,7 @@ pub struct Version {
 pub struct Status {
     pub version: Version,
     pub max_light_level: u32,
+    pub serial_number: [u8; 8],
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
