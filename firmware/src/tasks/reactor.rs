@@ -1,4 +1,3 @@
-use crate::measurement_buffer::MAX_MEASUREMENT_DURATION;
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
@@ -10,7 +9,10 @@ use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
 use embassy_sync::signal::Signal;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
-use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status, Version};
+use late_mate_comms::{
+    DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status, Version,
+    MAX_SCENARIO_DURATION_MS,
+};
 
 // how long to wait for a new value from the ADC
 const LIGHT_READING_TIMEOUT: Duration = Duration::from_millis(10);
@@ -119,10 +121,10 @@ async fn measure(
 ) {
     defmt::info!("a measurement requested");
 
-    if duration_ms as u64 > MAX_MEASUREMENT_DURATION.as_millis() {
+    if duration_ms as u64 > MAX_SCENARIO_DURATION_MS {
         defmt::error!(
             "duration_ms must be lower than {}",
-            MAX_MEASUREMENT_DURATION.as_millis()
+            MAX_SCENARIO_DURATION_MS
         );
         return;
     }
@@ -171,7 +173,6 @@ async fn measure(
             Ok(_) => (),
             Err(TimeoutError) => {
                 defmt::error!("timeout while running a measurement");
-                return;
             }
         }
     };

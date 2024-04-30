@@ -31,7 +31,7 @@ async fn indicator_led_task(
     let mut idx = 0;
 
     loop {
-        let (_, reading) = join(ticker.next(), (&mut light_readings_sub).next_message_pure()).await;
+        let (_, reading) = join(ticker.next(), light_readings_sub.next_message_pure()).await;
 
         buffer[idx] = reading.reading;
         idx += 1;

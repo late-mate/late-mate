@@ -1,16 +1,19 @@
-use embassy_time::{Duration, Instant};
+use embassy_time::Instant;
 use heapless::Vec;
-use late_mate_comms::{Measurement, MeasurementEvent};
+use late_mate_comms::{Measurement, MeasurementEvent, MAX_SCENARIO_DURATION_MS};
 
-pub const MAX_MEASUREMENT_DURATION: Duration = Duration::from_millis(1000);
+// 2khz measurements
+const MAX_SCENARIO_SIZE: u64 = MAX_SCENARIO_DURATION_MS * 2;
+// +10% slack
+const BUFFER_SIZE: usize = (MAX_SCENARIO_SIZE + MAX_SCENARIO_SIZE / 10) as usize;
 
 pub struct Buffer {
     pub started_at: Instant,
-    // MAX_MEASUREMENT_DURATION's worth of measurement at 2khz + 10% slack
-    pub measurements: Vec<Measurement, 2200>,
+    pub measurements: Vec<Measurement, BUFFER_SIZE>,
 }
 
 impl Buffer {
+    // todo: const init cell
     pub const fn new() -> Self {
         Self {
             started_at: Instant::MIN,

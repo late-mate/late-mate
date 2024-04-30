@@ -33,6 +33,10 @@ pub struct CrcCobsAccumulator {
     idx: usize,
 }
 
+// This is pulled out from the firmware to be sure that the value is validated in the CLI.
+// It can't use std::time::Duration because it's used in no_std in the firmware
+pub const MAX_SCENARIO_DURATION_MS: u64 = 5000;
+
 // an implementation of CRC32+COBS accummulator inspired by postcard's, as suggested here:
 // https://github.com/jamesmunns/postcard/issues/117
 // see https://github.com/jamesmunns/postcard/blob/393e18aeee3fe59872ad9231da225170c8296d56/src/accumulator.rs

@@ -5,6 +5,7 @@ pub mod server;
 use crate::device::Device;
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
+use late_mate_comms::MAX_SCENARIO_DURATION_MS;
 use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
@@ -38,7 +39,7 @@ enum Command {
     /// Run a single latency measurement
     Measure {
         #[arg(long, default_value = "300")]
-        duration: u16,
+        duration: u64,
         #[arg(long, value_parser(parse_hid_report))]
         start: nice_hid::HidReport,
         #[arg(long, requires = "followup")]
@@ -78,12 +79,15 @@ pub async fn run() -> anyhow::Result<()> {
                 followup_after,
                 followup,
             } => {
-                if duration > 1000 {
-                    return Err(anyhow!("Maximum measurement length is 1000ms"));
+                if duration > MAX_SCENARIO_DURATION_MS {
+                    return Err(anyhow!(
+                        "Maximum measurement length is {}ms",
+                        MAX_SCENARIO_DURATION_MS
+                    ));
                 }
                 let measurements = device
                     .measure(
-                        duration,
+                        duration as u16,
                         &start,
                         followup.map(|f| (followup_after.unwrap(), f)),
                     )
