@@ -1,0 +1,8 @@
+[package]
+name = "late-mate-validation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+evdev = "0.12.1"
+rppal = "0.17.1"

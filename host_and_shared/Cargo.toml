@@ -5,5 +5,11 @@ resolver = "2"
 members = [
     "ads1220",
     "late-mate-cli",
-    "late-mate-comms"
+    "late-mate-comms",
+    "late-mate-validation"
 ]
+
+# todo: enable for production releases
+#[profile.release]
+#codegen-units = 1
+#lto = "fat"
