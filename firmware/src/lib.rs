@@ -20,6 +20,7 @@ use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
+use embassy_time::Timer;
 
 use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice};
 
@@ -88,12 +89,32 @@ pub static HID_SIGNAL: HidSignal = Signal::new();
 pub type MeasurementBuffer = Mutex<RawMutex, Buffer>;
 pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(Buffer::new());
 
+const ADDR_OFFSET: u32 = 0x100000;
+const FLASH_SIZE: usize = 2 * 1024 * 1024;
+
 pub async fn main(spawner: Spawner) {
     info!("Late Mate is booting up");
 
+    let p = embassy_rp::init(Default::default());
+
+    // per https://github.com/embassy-rs/embassy/blob/56a7b10064b830b1be1933085a5845d0d6be5f2e/examples/rp/src/bin/flash.rs#L21C1-L25C35:
+    // add some delay to give an attached debug probe time to parse the
+    // defmt RTT header. Reading that header might touch flash memory, which
+    // interferes with flash write operations.
+    // https://github.com/knurling-rs/defmt/pull/683
+    Timer::after_millis(10).await;
+
     // todo: clocks?
 
-    let p = embassy_rp::init(Default::default());
+    let mut flash =
+        embassy_rp::flash::Flash::<_, embassy_rp::flash::Blocking, FLASH_SIZE>::new_blocking(
+            p.FLASH,
+        );
+
+    // Get unique id
+    let mut uid = [0; 8];
+    flash.blocking_unique_id(&mut uid).unwrap();
+    info!("unique id: 0x{:x}", uid);
 
     let clk = p.PIN_18;
     let mosi = p.PIN_19;
