@@ -28,11 +28,10 @@ heapless = "0.8"
 
 postcard = "1"
 
-# required for static_cell to compile (it enables CAS emulation)
+# required for static_cell to compile (enables CAS emulation)
 portable-atomic = { version = "1.6", features = ["critical-section"] }
+
 static_cell = { version = "2", features = [] }
-bitfield-struct = "0.6"
-log = "0.4"
 
 # shared stuff
 ads1220 = { path = "../host_and_shared/ads1220" }
@@ -41,3 +40,5 @@ late-mate-comms = { path = "../host_and_shared/late-mate-comms" }
 # see https://embassy.dev/book/dev/getting_started.html#_it_didnt_work
 [profile.release]
 debug = 2
+codegen-units = 1
+lto = "thin"
