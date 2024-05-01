@@ -1,6 +1,6 @@
 use embassy_time::Instant;
 use heapless::Vec;
-use late_mate_comms::{Measurement, MeasurementEvent, MAX_SCENARIO_DURATION_MS};
+use late_mate_shared::{Measurement, MeasurementEvent, MAX_SCENARIO_DURATION_MS};
 
 // 2khz measurements
 const MAX_SCENARIO_SIZE: u64 = MAX_SCENARIO_DURATION_MS * 2;

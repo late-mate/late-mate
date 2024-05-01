@@ -25,14 +25,14 @@ pub struct MouseReport {
     pub pan: i8,
 }
 
-impl From<&MouseReport> for late_mate_comms::MouseReport {
+impl From<&MouseReport> for late_mate_shared::MouseReport {
     fn from(value: &MouseReport) -> Self {
         let mut byte_buttons = 0u8;
         for button in &value.buttons {
             byte_buttons |= *button as u8
         }
 
-        late_mate_comms::MouseReport {
+        late_mate_shared::MouseReport {
             buttons: byte_buttons,
             x: value.x,
             y: value.y,
@@ -159,7 +159,7 @@ pub struct KeyboardReport {
     pub pressed_keys: Vec<KeyboardKey>,
 }
 
-impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
+impl From<&KeyboardReport> for late_mate_shared::KeyboardReport {
     fn from(value: &KeyboardReport) -> Self {
         let mut byte_modifier = 0u8;
         for modifier in &value.modifiers {
@@ -171,7 +171,7 @@ impl From<&KeyboardReport> for late_mate_comms::KeyboardReport {
             byte_keycodes[i] = *keycode as u8;
         }
 
-        late_mate_comms::KeyboardReport {
+        late_mate_shared::KeyboardReport {
             modifier: byte_modifier,
             keycodes: byte_keycodes,
         }
@@ -185,11 +185,11 @@ pub enum HidReport {
     Keyboard(KeyboardReport),
 }
 
-impl From<&HidReport> for late_mate_comms::HidReport {
+impl From<&HidReport> for late_mate_shared::HidReport {
     fn from(value: &HidReport) -> Self {
         match value {
-            HidReport::Mouse(report) => late_mate_comms::HidReport::Mouse(report.into()),
-            HidReport::Keyboard(report) => late_mate_comms::HidReport::Keyboard(report.into()),
+            HidReport::Mouse(report) => late_mate_shared::HidReport::Mouse(report.into()),
+            HidReport::Keyboard(report) => late_mate_shared::HidReport::Keyboard(report.into()),
         }
     }
 }

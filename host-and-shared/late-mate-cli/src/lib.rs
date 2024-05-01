@@ -5,7 +5,7 @@ pub mod server;
 use crate::device::Device;
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
-use late_mate_comms::MAX_SCENARIO_DURATION_MS;
+use late_mate_shared::MAX_SCENARIO_DURATION_MS;
 use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
@@ -81,7 +81,7 @@ pub async fn run() -> anyhow::Result<()> {
             } => {
                 if duration > MAX_SCENARIO_DURATION_MS {
                     return Err(anyhow!(
-                        "Maximum measurement length is {}ms",
+                        "Maximum scenario duration is {}ms",
                         MAX_SCENARIO_DURATION_MS
                     ));
                 }

@@ -23,7 +23,7 @@ use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
 
-use late_mate_comms::{DeviceToHost, HidRequest, HostToDevice};
+use late_mate_shared::{DeviceToHost, HidRequest, HostToDevice};
 
 pub const HARDWARE_VERSION: u8 = 1;
 // todo: maybe just use a git hash?

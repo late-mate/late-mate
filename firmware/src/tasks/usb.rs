@@ -6,7 +6,7 @@ use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_sync::channel::Channel;
 use embassy_usb::{Builder, Config};
-use late_mate_comms::{DeviceToHost, HostToDevice, USB_PID, USB_VID};
+use late_mate_shared::{DeviceToHost, HostToDevice, USB_PID, USB_VID};
 use static_cell::StaticCell;
 
 mod device;

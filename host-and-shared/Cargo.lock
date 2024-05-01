@@ -754,7 +754,7 @@ dependencies = [
  "clap",
  "futures",
  "headers",
- "late-mate-comms",
+ "late-mate-shared",
  "serde",
  "serde_json",
  "thiserror",
@@ -771,7 +771,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "late-mate-comms"
+name = "late-mate-shared"
 version = "0.1.0"
 dependencies = [
  "cobs",

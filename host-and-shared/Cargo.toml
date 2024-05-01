@@ -5,7 +5,7 @@ resolver = "2"
 members = [
     "ads1220",
     "late-mate-cli",
-    "late-mate-comms",
+    "late-mate-shared",
     "late-mate-validation"
 ]
 

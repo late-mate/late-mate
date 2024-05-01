@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use late_mate_comms::{USB_PID, USB_VID};
+use late_mate_shared::{USB_PID, USB_VID};
 use tokio_serial::{SerialPortInfo, SerialPortType, UsbPortInfo};
 
 pub fn find_serial_port() -> anyhow::Result<SerialPortInfo> {

@@ -8,7 +8,7 @@ clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["rt", "macros", "io-util", "time", "sync"] }
 tokio-serial = "5"
 
-late-mate-comms = { path = "../late-mate-comms", features = ["std"] }
+late-mate-shared = { path = "../late-mate-shared", features = ["std"] }
 thiserror = "1"
 anyhow = { version = "1", features = ["backtrace"] }
 usbd-hid = "0.7"

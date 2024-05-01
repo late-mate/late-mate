@@ -9,7 +9,7 @@ use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
 use embassy_sync::signal::Signal;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
-use late_mate_comms::{
+use late_mate_shared::{
     DeviceToHost, HidRequest, HostToDevice, MeasureFollowup, Status, Version,
     MAX_SCENARIO_DURATION_MS,
 };

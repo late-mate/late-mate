@@ -883,19 +883,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "late-mate-comms"
-version = "0.1.0"
-dependencies = [
- "cobs",
- "crc",
- "defmt",
- "postcard",
- "serde",
- "ssmarshal",
- "usbd-hid 0.6.1",
-]
-
-[[package]]
 name = "late-mate-firmware"
 version = "0.1.0"
 dependencies = [
@@ -912,13 +899,26 @@ dependencies = [
  "embassy-time",
  "embassy-usb",
  "heapless 0.8.0",
- "late-mate-comms",
+ "late-mate-shared",
  "numtoa",
  "panic-probe",
  "portable-atomic",
  "postcard",
  "static_cell",
  "usbd-hid 0.7.0",
+]
+
+[[package]]
+name = "late-mate-shared"
+version = "0.1.0"
+dependencies = [
+ "cobs",
+ "crc",
+ "defmt",
+ "postcard",
+ "serde",
+ "ssmarshal",
+ "usbd-hid 0.6.1",
 ]
 
 [[package]]

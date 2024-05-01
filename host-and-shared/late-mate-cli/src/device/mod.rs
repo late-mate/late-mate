@@ -3,7 +3,7 @@ use crate::device::serial::find_serial_port;
 use crate::nice_hid;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
-use late_mate_comms::{
+use late_mate_shared::{
     DeviceToHost, HidRequest, HidRequestId, HostToDevice, MeasureFollowup, Measurement, Status,
 };
 use std::future::Future;

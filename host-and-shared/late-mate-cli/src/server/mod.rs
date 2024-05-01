@@ -20,7 +20,7 @@ use axum::extract::connect_info::ConnectInfo;
 
 use crate::device::Device;
 use futures::{sink::SinkExt, stream::StreamExt};
-use late_mate_comms::Measurement;
+use late_mate_shared::Measurement;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{mpsc, watch, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
@@ -303,7 +303,7 @@ struct ProcessedMeasurements {
 
 impl ProcessedMeasurements {
     fn new(measurements: &[Measurement]) -> anyhow::Result<Self> {
-        use late_mate_comms::MeasurementEvent as ME;
+        use late_mate_shared::MeasurementEvent as ME;
 
         let (first_hid_idx, first_hid_time) = measurements
             .iter()

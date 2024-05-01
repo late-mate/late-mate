@@ -34,8 +34,8 @@ portable-atomic = { version = "1.6", features = ["critical-section"] }
 static_cell = { version = "2", features = [] }
 
 # shared stuff
-ads1220 = { path = "../host_and_shared/ads1220" }
-late-mate-comms = { path = "../host_and_shared/late-mate-comms" }
+ads1220 = { path = "../host-and-shared/ads1220" }
+late-mate-shared = { path = "../host-and-shared/late-mate-shared" }
 
 # see https://embassy.dev/book/dev/getting_started.html#_it_didnt_work
 [profile.release]

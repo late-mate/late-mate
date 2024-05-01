@@ -10,7 +10,7 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, 
 use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_time::{Instant, Timer};
-use late_mate_comms::MeasurementEvent;
+use late_mate_shared::MeasurementEvent;
 
 // the measured max value
 pub const MAX_LIGHT_LEVEL: u32 = (1 << 23) - 1;
