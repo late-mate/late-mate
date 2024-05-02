@@ -1,12 +1,14 @@
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
 use crate::{
-    CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, MeasurementBuffer,
-    RawMutex, FIRMWARE_VERSION, HARDWARE_VERSION,
+    CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, RawMutex,
+    FIRMWARE_VERSION, HARDWARE_VERSION,
 };
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
+use embassy_rp::rom_data::reset_to_usb_boot;
+use embassy_sync::mutex::Mutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError, Timer};
 use late_mate_shared::{
@@ -63,12 +65,19 @@ async fn reactor_task(
     comms_to_host: &'static CommsToHost,
     mut light_readings_sub: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
 ) {
-    defmt::info!("starting reactor loop");
+    defmt::info!("starting the reactor loop");
     loop {
         match comms_from_host.receive().await {
+            HostToDevice::ResetToFirmwareUpdate => {
+                defmt::info!("resetting to the USB firmware update mode");
+                let red_led_gpio = 14;
+                // first arg: bitmask for the LED that will indicate USB Mass Storage activity
+                // second arg: allows disabling bootloader USB interfaces, 0 enables everything
+                reset_to_usb_boot(1 << red_led_gpio, 0);
+            }
             HostToDevice::GetStatus => {
                 let status = DeviceToHost::Status(Status {
                     version: Version {
@@ -114,7 +123,7 @@ async fn measure(
     comms_to_host: &'static CommsToHost,
     light_readings_sub: &mut LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     duration_ms: u16,
     start: HidRequest,
     followup: Option<MeasureFollowup>,
@@ -213,7 +222,7 @@ pub fn init(
     light_readings_sub_bg: LightReadingsSubscriber,
     light_readings_sub_measure: LightReadingsSubscriber,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
 ) {
     spawner.must_spawn(bg_measurement_loop_task(

@@ -1,10 +1,11 @@
 use crate::serial_number::SerialNumber;
-use crate::{HidSignal, MeasurementBuffer, RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
+use crate::{HidSignal, RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_sync::channel::Channel;
+use embassy_sync::mutex::Mutex;
 use embassy_usb::{Builder, Config};
 use late_mate_shared::{DeviceToHost, HostToDevice, USB_PID, USB_VID};
 use static_cell::StaticCell;
@@ -70,7 +71,7 @@ pub fn init(
     from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_N_BUFFERED>,
     to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_N_BUFFERED>,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
 ) {
     info!("Initializing usb");

@@ -1,6 +1,9 @@
+use crate::RawMutex;
+use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
 use heapless::Vec;
 use late_mate_shared::{Measurement, MeasurementEvent, MAX_SCENARIO_DURATION_MS};
+use static_cell::ConstStaticCell;
 
 // 2khz measurements
 const MAX_SCENARIO_SIZE: u64 = MAX_SCENARIO_DURATION_MS * 2;
@@ -12,9 +15,18 @@ pub struct Buffer {
     pub measurements: Vec<Measurement, BUFFER_SIZE>,
 }
 
+/// Panics if it's called twice
+pub fn init() -> &'static Mutex<RawMutex, Buffer> {
+    // ConstStaticCell guarantees that the initialiser (Buffer::new()) never goes on the stack.
+    // Normally creating a buffer and assigning it somewhere create the buffer on the stack
+    // first, but ConstStaticCell is `const`-fueled, so this is guaranteed to not happen
+    static BUFFER: ConstStaticCell<Mutex<RawMutex, Buffer>> =
+        ConstStaticCell::new(Mutex::new(Buffer::new()));
+    BUFFER.take()
+}
+
 impl Buffer {
-    // todo: const init cell
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             started_at: Instant::MIN,
             measurements: Vec::new(),

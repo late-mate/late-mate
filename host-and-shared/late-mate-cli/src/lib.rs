@@ -47,6 +47,8 @@ enum Command {
         #[arg(long, value_parser(parse_hid_report), requires = "followup_after")]
         followup: Option<nice_hid::HidReport>,
     },
+    /// Request device reset to firmware update mode
+    ResetToFirmwareUpdate,
 }
 
 fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
@@ -98,6 +100,9 @@ pub async fn run() -> anyhow::Result<()> {
             }
             Command::RunServer { interface, port } => {
                 server::run(device, interface, port).await?;
+            }
+            Command::ResetToFirmwareUpdate => {
+                device.reset_to_firmware_update().await?;
             }
         };
         Ok::<(), anyhow::Error>(())

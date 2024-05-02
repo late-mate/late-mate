@@ -1,8 +1,9 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
-use crate::{CommsToHost, HidAckKind, HidSignal, MeasurementBuffer};
+use crate::{CommsToHost, HidAckKind, HidSignal, RawMutex};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
+use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
 
 use embassy_usb::class::hid::{Config, HidWriter, State};
@@ -17,7 +18,7 @@ async fn hid_sender_task(
     to_host: &'static CommsToHost,
     mut mouse_writer: HidWriter<'static, Driver<'static, USB>, 64>,
     mut keyboard_writer: HidWriter<'static, Driver<'static, USB>, 64>,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
 ) {
     defmt::info!("Starting USB HID sender loop");
 
@@ -66,7 +67,7 @@ pub fn init(
     builder: &mut Builder<'static, Driver<'static, USB>>,
     to_host: &'static CommsToHost,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static MeasurementBuffer,
+    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
 ) {
     static MOUSE_STATE: StaticCell<State> = StaticCell::new();
     static KEYBOARD_STATE: StaticCell<State> = StaticCell::new();

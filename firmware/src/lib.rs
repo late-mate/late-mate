@@ -6,18 +6,16 @@ use defmt::info;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 
-mod measurement_buffer;
+mod scenario_buffer;
 mod serial_number;
 mod tasks;
 
-use crate::measurement_buffer::Buffer;
 use crate::tasks::light_sensor::LightReading;
 use crate::tasks::{indicator_led, light_sensor, reactor, usb};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
 use embassy_sync::channel::Channel;
-use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
@@ -87,9 +85,6 @@ pub enum HidAckKind {
 pub type HidSignal = Signal<RawMutex, (HidRequest, HidAckKind)>;
 pub static HID_SIGNAL: HidSignal = Signal::new();
 
-pub type MeasurementBuffer = Mutex<RawMutex, Buffer>;
-pub static MEASUREMENT_BUFFER: MeasurementBuffer = Mutex::new(Buffer::new());
-
 // Must be equal to the size of the flash chip. Pico uses a 2MB chip
 pub const FLASH_SIZE: usize = 2 * 1024 * 1024;
 
@@ -125,13 +120,15 @@ pub async fn main(spawner: Spawner) {
 
     let usb_driver = UsbDriver::new(p.USB, UsbIrqs);
 
+    let scenario_buffer = scenario_buffer::init();
+
     usb::init(
         &spawner,
         usb_driver,
         &COMMS_FROM_HOST,
         &COMMS_TO_HOST,
         &HID_SIGNAL,
-        &MEASUREMENT_BUFFER,
+        scenario_buffer,
         serial_number,
     );
 
@@ -142,7 +139,7 @@ pub async fn main(spawner: Spawner) {
         LIGHT_READINGS.subscriber().unwrap(),
         LIGHT_READINGS.subscriber().unwrap(),
         &HID_SIGNAL,
-        &MEASUREMENT_BUFFER,
+        scenario_buffer,
         serial_number,
     );
 
@@ -163,7 +160,4 @@ pub async fn main(spawner: Spawner) {
 }
 
 // TODO:
-// - LED reflecting the light level
-// - temperature in the status report
-
-// TODO: USB DFU allows firmware updates!!1 embassy-usb-dfu
+// - temperature in the status report?

@@ -9,6 +9,7 @@ pub struct MeasureFollowup {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum HostToDevice {
+    ResetToFirmwareUpdate,
     GetStatus,
     // can be called repeatedly with overlapping duration, works as a keepalive
     MeasureBackground {

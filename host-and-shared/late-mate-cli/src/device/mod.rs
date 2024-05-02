@@ -140,10 +140,10 @@ impl Device {
     pub async fn get_status(&mut self) -> anyhow::Result<Status> {
         self.one_off(
             HostToDevice::GetStatus,
-            Some(|msg| match msg {
+            Some(Box::new(move |msg| match msg {
                 DeviceToHost::Status(s) => Some(s),
                 _ => None,
-            }),
+            })),
         )
         .await
     }
@@ -155,10 +155,10 @@ impl Device {
         };
         self.one_off(
             HostToDevice::SendHidReport(hid_request),
-            Some(|msg| match msg {
+            Some(Box::new(move |msg| match msg {
                 DeviceToHost::HidReportSent(id) if id == hid_request.id => Some(()),
                 _ => None,
-            }),
+            })),
         )
         .await
     }
@@ -273,10 +273,15 @@ impl Device {
         }
     }
 
+    pub async fn reset_to_firmware_update(&mut self) -> anyhow::Result<Status> {
+        self.one_off(HostToDevice::ResetToFirmwareUpdate, None)
+            .await
+    }
+
     async fn one_off<T>(
         &mut self,
         command: HostToDevice,
-        resp_mapper: Option<impl Fn(DeviceToHost) -> Option<T>>,
+        resp_mapper: Option<Box<dyn Fn(DeviceToHost) -> Option<T> + Send + Sync>>,
     ) -> anyhow::Result<T> {
         let response_timeout = Duration::from_secs(3);
 
@@ -289,6 +294,7 @@ impl Device {
         // I believe this should ~guarantee that we won't miss the response
         let mut rx_receiver = self.rx_sender.subscribe();
         let resp_future = async {
+            // todo: what am I doing if I don't expect a reply (eg reset to firmware update)?
             loop {
                 match rx_receiver.recv().await {
                     Ok(msg) => {
