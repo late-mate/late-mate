@@ -9,7 +9,8 @@ use embassy_time::Instant;
 
 use embassy_usb::class::hid::{Config, HidWriter, State};
 use embassy_usb::Builder;
-use late_mate_shared::{DeviceToHost, HidReport, MeasurementEvent};
+use late_mate_shared::comms::device_to_host::{DeviceToHost, MeasurementEvent};
+use late_mate_shared::comms::hid::HidReport;
 use static_cell::StaticCell;
 use usbd_hid::descriptor::{KeyboardReport, MouseReport, SerializedDescriptor};
 

@@ -1,4 +1,4 @@
-use crate::HidRequest;
+use crate::comms::hid::HidRequest;
 use postcard::experimental::max_size::MaxSize;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
@@ -7,7 +7,7 @@ pub struct MeasureFollowup {
     pub hid_request: HidRequest,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum HostToDevice {
     ResetToFirmwareUpdate,
     GetStatus,
@@ -22,4 +22,13 @@ pub enum HostToDevice {
         start: HidRequest,
         followup: Option<MeasureFollowup>,
     },
+    // revert is a separate scenario
+    ExecuteScenario(heapless::Vec<ScenarioStep, 16>),
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+pub enum ScenarioStep {
+    HidRequest(HidRequest),
+    StartTiming,
+    Wait,
 }

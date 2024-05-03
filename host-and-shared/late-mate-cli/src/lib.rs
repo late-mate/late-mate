@@ -5,6 +5,7 @@ pub mod server;
 use crate::device::Device;
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
+use late_mate_shared::comms::MAX_BUFFER_SIZE;
 use late_mate_shared::MAX_SCENARIO_DURATION_MS;
 use std::net::IpAddr;
 use std::time::Duration;
@@ -57,6 +58,8 @@ fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
 
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
+
+    dbg!(MAX_BUFFER_SIZE);
 
     // todo: handle more than one device being connected
 

@@ -6,8 +6,9 @@ use embassy_rp::peripherals::USB;
 
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
 use embassy_usb::Builder;
-use late_mate_shared::{
-    encode, CrcCobsAccumulator, FeedResult, HostToDevice, MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
+use late_mate_shared::comms::host_to_device::HostToDevice;
+use late_mate_shared::comms::{
+    encode, CrcCobsAccumulator, FeedResult, MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
 };
 use static_cell::StaticCell;
 

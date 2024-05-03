@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use late_mate_shared::{
-    CrcCobsAccumulator, DeviceToHost, FeedResult, HostToDevice, MAX_BUFFER_SIZE,
-};
+use late_mate_shared::comms::device_to_host::DeviceToHost;
+use late_mate_shared::comms::host_to_device::HostToDevice;
+use late_mate_shared::comms::{CrcCobsAccumulator, FeedResult, MAX_BUFFER_SIZE};
 use tokio::sync::{broadcast, mpsc};
 use tokio_serial::SerialStream;
 use tokio_util::bytes::{Buf, BytesMut};
@@ -49,7 +49,7 @@ impl Encoder<HostToDevice> for CrcCobsCodec {
 
     fn encode(&mut self, item: HostToDevice, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let mut msg_buf = [0u8; MAX_BUFFER_SIZE];
-        let msg_len = late_mate_shared::encode(&item, &mut msg_buf);
+        let msg_len = late_mate_shared::comms::encode(&item, &mut msg_buf);
 
         dst.extend_from_slice(&msg_buf[..msg_len]);
 

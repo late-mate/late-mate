@@ -9,7 +9,9 @@ edition = "2021"
 cobs = { version = "0.2", default-features = false }
 crc = "3"
 defmt = "0.3"
-postcard = { version = "1", default-features = false, features = ["use-crc", "experimental-derive"] }
+# must track postmark's version
+heapless = { version = "0.7.0", features = ["serde"] }
+postcard = { version = "1", default-features = false, features = ["use-crc", "experimental-derive", "heapless"] }
 serde = { version = "1", default-features = false, features = ["derive"] }
 # it's a transitive dependency, but I need to manage it's "std" feature that is a default feature
 ssmarshal = { version = "1", default-features = false }

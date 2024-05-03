@@ -1,4 +1,4 @@
-use crate::types::hid::HidRequestId;
+use crate::comms::hid::HidRequestId;
 use postcard::experimental::max_size::MaxSize;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
@@ -26,10 +26,6 @@ pub struct Measurement {
     pub microsecond: u32,
     pub event: MeasurementEvent,
 }
-
-// u32 = 4 bytes for the microsecond; 1 byte for the enum tag; 4 bytes for the datapoint
-// = 9 bytes per datapoint; 2khz = 2000 * 9 ~ 18kb of internal buffer for 1 second of data,
-// which should fit no problem (RPi has 264kb of RAM)
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum DeviceToHost {

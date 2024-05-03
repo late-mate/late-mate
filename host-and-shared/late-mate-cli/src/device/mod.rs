@@ -3,9 +3,9 @@ use crate::device::serial::find_serial_port;
 use crate::nice_hid;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
-use late_mate_shared::{
-    DeviceToHost, HidRequest, HidRequestId, HostToDevice, MeasureFollowup, Measurement, Status,
-};
+use late_mate_shared::comms::device_to_host::{DeviceToHost, Measurement, Status};
+use late_mate_shared::comms::hid::{HidRequest, HidRequestId};
+use late_mate_shared::comms::host_to_device::{HostToDevice, MeasureFollowup};
 use std::future::Future;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
@@ -287,7 +287,8 @@ impl Device {
 
         let req_future = async {
             self.tx_sender
-                .send(command)
+                // todo: this clone?
+                .send(command.clone())
                 .await
                 .context("Device TX channel was unexpectedly closed")
         };
