@@ -1,5 +1,6 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
 use crate::{CommsFromHost, CommsToHost};
+use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 
@@ -20,7 +21,7 @@ async fn serial_rx_task(
     let mut cobs_acc = CrcCobsAccumulator::new();
     let mut usb_buf = [0u8; USB_MAX_PACKET_SIZE as usize];
 
-    defmt::info!("Starting USB serial RX loop");
+    info!("Starting USB serial RX loop");
     loop {
         // todo: error handling
         let usb_len = serial_rx.read_packet(&mut usb_buf).await.unwrap();
@@ -31,7 +32,7 @@ async fn serial_rx_task(
             window = match cobs_acc.feed::<HostToDevice>(window) {
                 FeedResult::Consumed => break 'cobs,
                 FeedResult::OverFull { remaining } => {
-                    defmt::error!("overfull");
+                    error!("overfull");
                     remaining
                 }
                 FeedResult::Error {
@@ -39,7 +40,7 @@ async fn serial_rx_task(
                     remaining,
                 } => {
                     // todo: can't format the error with defmt without a derive
-                    defmt::error!("error");
+                    error!("error");
                     remaining
                 }
                 FeedResult::Success { data, remaining } => {
@@ -58,7 +59,7 @@ async fn serial_tx_task(
 ) {
     serial_tx.wait_connection().await;
 
-    defmt::info!("Starting USB serial TX loop");
+    info!("Starting USB serial TX loop");
     loop {
         let msg = to_host.receive().await;
 
@@ -70,7 +71,7 @@ async fn serial_tx_task(
         match serial_tx.write_packet(&buffer[..packet_len]).await {
             Ok(()) => {}
             Err(e) => {
-                defmt::error!("Error sending to host: {:?}", e);
+                error!("Error sending to host: {:?}", e);
             }
         }
     }

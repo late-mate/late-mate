@@ -1,5 +1,6 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
 use crate::{CommsToHost, HidAckKind, HidSignal, RawMutex};
+use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
@@ -20,7 +21,7 @@ async fn hid_sender_task(
     mut keyboard_writer: HidWriter<'static, Driver<'static, USB>, 64>,
     measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
 ) {
-    defmt::info!("Starting USB HID sender loop");
+    info!("Starting USB HID sender loop");
 
     loop {
         let (request, ack) = hid_signal.wait().await;
@@ -30,7 +31,7 @@ async fn hid_sender_task(
             HidReport::Keyboard(r) => keyboard_writer.write_serialize(&r.to_usbd_hid()).await,
         };
         if let Err(e) = hid_write_result {
-            defmt::error!("HID write error: {:?}", e);
+            error!("HID write error: {:?}", e);
             continue;
         }
         match ack {

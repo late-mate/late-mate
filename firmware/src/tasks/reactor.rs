@@ -4,6 +4,7 @@ use crate::{
     CommsFromHost, CommsToHost, HidAckKind, HidSignal, LightReadingsSubscriber, RawMutex,
     FIRMWARE_VERSION, HARDWARE_VERSION,
 };
+use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
@@ -27,7 +28,7 @@ async fn bg_measurement_loop_task(
     comms_to_host: &'static CommsToHost,
     mut light_readings_sub: LightReadingsSubscriber,
 ) {
-    defmt::info!("starting bg measurement loop");
+    info!("starting bg measurement loop");
     loop {
         let mut finish_time = BG_FINISH_TIME_SIGNAL.wait().await;
         'inner: while Instant::now() < finish_time {
@@ -49,7 +50,7 @@ async fn bg_measurement_loop_task(
                         .await
                 }
                 Either::First(Err(TimeoutError)) => {
-                    defmt::error!("timeout waiting for a light reading");
+                    error!("timeout waiting for a light reading");
                     continue 'inner;
                 }
                 Either::Second(new_finish_time) => finish_time = new_finish_time,
@@ -68,11 +69,11 @@ async fn reactor_task(
     measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
 ) {
-    defmt::info!("starting the reactor loop");
+    info!("starting the reactor loop");
     loop {
         match comms_from_host.receive().await {
             HostToDevice::ResetToFirmwareUpdate => {
-                defmt::info!("resetting to the USB firmware update mode");
+                info!("resetting to the USB firmware update mode");
                 let red_led_gpio = 14;
                 // first arg: bitmask for the LED that will indicate USB Mass Storage activity
                 // second arg: allows disabling bootloader USB interfaces, 0 enables everything
@@ -128,17 +129,17 @@ async fn measure(
     start: HidRequest,
     followup: Option<MeasureFollowup>,
 ) {
-    defmt::info!("a measurement requested");
+    info!("a measurement requested");
 
     if duration_ms as u64 > MAX_SCENARIO_DURATION_MS {
-        defmt::error!(
+        error!(
             "duration_ms must be lower than {}",
             MAX_SCENARIO_DURATION_MS
         );
         return;
     }
 
-    defmt::info!("cancelling background measurements");
+    info!("cancelling background measurements");
 
     // cancel background measurements
     BG_FINISH_TIME_SIGNAL.signal(Instant::now());
@@ -146,14 +147,14 @@ async fn measure(
         // wait for the background measurement loop to finish
     }
 
-    defmt::info!("clearing the buffer");
+    info!("clearing the buffer");
 
     let started_at = Instant::now();
     {
         measurement_buffer.lock().await.clear(started_at);
     }
 
-    defmt::info!("sending the start signal and measuring into the buffer");
+    info!("sending the start signal and measuring into the buffer");
 
     // todo: maybe change the signal to a channel?
     hid_signal.signal((start, HidAckKind::Buffered));
@@ -181,7 +182,7 @@ async fn measure(
         match with_timeout(Duration::from_millis(duration_ms as u64 * 2), reader_future).await {
             Ok(_) => (),
             Err(TimeoutError) => {
-                defmt::error!("timeout while running a measurement");
+                error!("timeout while running a measurement");
             }
         }
     };
@@ -196,7 +197,7 @@ async fn measure(
         timely_reader_future.await;
     }
 
-    defmt::info!("measurements finished, sending the buffer");
+    info!("measurements finished, sending the buffer");
 
     let guard = measurement_buffer.lock().await;
     let total = guard.measurements.len() as u16;
@@ -211,7 +212,7 @@ async fn measure(
             .await;
     }
 
-    defmt::info!("measurement finished");
+    info!("measurement finished");
 }
 
 #[allow(clippy::too_many_arguments)]
