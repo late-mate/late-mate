@@ -1,22 +1,28 @@
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
-use crate::{CommsFromHost, CommsToHost};
+use crate::{CommsFromHost, CommsToHost, RawMutex};
 use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
+use embassy_sync::channel::Channel;
 
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
 use embassy_usb::Builder;
-use late_mate_shared::comms::host_to_device::HostToDevice;
 use late_mate_shared::comms::{
-    encode, CrcCobsAccumulator, FeedResult, MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
+    device_to_host, encode, host_to_device, CrcCobsAccumulator, FeedResult,
+    MAX_BUFFER_SIZE as COMMS_MAX_BUFFER_SIZE,
 };
 use static_cell::StaticCell;
 
+// max number of serial in/out messages that can be buffered before waiting for more space
+const FROM_HOST_N_BUFFERED: usize = 4;
+const TO_HOST_N_BUFFERED: usize = 4;
+
+static FROM_HOST: Channel<RawMutex, host_to_device::Envelope, FROM_HOST_N_BUFFERED> =
+    Channel::new();
+static TO_HOST: Channel<RawMutex, device_to_host::Envelope, TO_HOST_N_BUFFERED> = Channel::new();
+
 #[embassy_executor::task]
-async fn serial_rx_task(
-    mut serial_rx: Receiver<'static, embassy_rp::usb::Driver<'static, USB>>,
-    from_host: &'static CommsFromHost,
-) {
+async fn serial_rx_task(mut serial_rx: Receiver<'static, embassy_rp::usb::Driver<'static, USB>>) {
     serial_rx.wait_connection().await;
 
     let mut cobs_acc = CrcCobsAccumulator::new();
@@ -30,22 +36,21 @@ async fn serial_rx_task(
         let mut window = &usb_buf[..usb_len];
 
         'cobs: while !window.is_empty() {
-            window = match cobs_acc.feed::<HostToDevice>(window) {
+            window = match cobs_acc.feed::<host_to_device::Envelope>(window) {
                 FeedResult::Consumed => break 'cobs,
                 FeedResult::OverFull { remaining } => {
                     error!("overfull");
                     remaining
                 }
                 FeedResult::Error {
-                    error: _e,
+                    error: e,
                     remaining,
                 } => {
-                    // todo: can't format the error with defmt without a derive
-                    error!("error");
+                    error!("COBS/CRC decoding error: {:?}", e);
                     remaining
                 }
                 FeedResult::Success { data, remaining } => {
-                    from_host.send(data).await;
+                    FROM_HOST.send(data).await;
                     remaining
                 }
             }
@@ -54,15 +59,12 @@ async fn serial_rx_task(
 }
 
 #[embassy_executor::task]
-async fn serial_tx_task(
-    mut serial_tx: Sender<'static, embassy_rp::usb::Driver<'static, USB>>,
-    to_host: &'static CommsToHost,
-) {
+async fn serial_tx_task(mut serial_tx: Sender<'static, embassy_rp::usb::Driver<'static, USB>>) {
     serial_tx.wait_connection().await;
 
     info!("Starting USB serial TX loop");
     loop {
-        let msg = to_host.receive().await;
+        let msg = TO_HOST.receive().await;
 
         let buffer = &mut [0u8; COMMS_MAX_BUFFER_SIZE];
         // todo: encode shouldn't use .unwrap
@@ -72,17 +74,23 @@ async fn serial_tx_task(
         match serial_tx.write_packet(&buffer[..packet_len]).await {
             Ok(()) => {}
             Err(e) => {
-                error!("Error sending to host: {:?}", e);
+                error!("EndpointError sending to host: {:?}", e);
             }
         }
     }
 }
 
+pub async fn write_to_host(envelope: device_to_host::Envelope) {
+    TO_HOST.send(envelope).await
+}
+
+pub async fn receive_from_host() -> host_to_device::Envelope {
+    FROM_HOST.receive().await
+}
+
 pub fn init(
     spawner: &Spawner,
     builder: &mut Builder<'static, embassy_rp::usb::Driver<'static, USB>>,
-    from_host: &'static CommsFromHost,
-    to_host: &'static CommsToHost,
 ) {
     static CDC_STATE: StaticCell<State> = StaticCell::new();
     let cdc_state: &'static mut State = CDC_STATE.init(State::new());
@@ -91,6 +99,6 @@ pub fn init(
 
     let (serial_tx, serial_rx) = class.split();
 
-    spawner.must_spawn(serial_rx_task(serial_rx, from_host));
-    spawner.must_spawn(serial_tx_task(serial_tx, to_host));
+    spawner.must_spawn(serial_rx_task(serial_rx));
+    spawner.must_spawn(serial_tx_task(serial_tx));
 }

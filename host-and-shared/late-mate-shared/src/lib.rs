@@ -1,7 +1,5 @@
 #![cfg_attr(all(not(test), not(feature = "std")), no_std)]
 
-use crate::comms::host_to_device::HostToDevice;
-
 pub mod comms;
 
 // VID/PID pair is allocated for Late Mate

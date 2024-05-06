@@ -1,6 +1,13 @@
 use postcard::experimental::max_size::MaxSize;
 
-pub type HidRequestId = u32;
+// All enums are repr(u8) to minimise size (default is isize = 4 bytes on the MCU)
+// All enums have explicit discriminants to make reverse compatibility simpler
+// All enums are non_exhaustive because, again, reverse compatibility (apparently
+// serde supports ignoring unknown variants on non_exhaustive enums, see
+// https://github.com/serde-rs/serde/pull/2570)
+
+/// It is only unique for the given HostToDevice request
+pub type HidRequestId = u8;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct MouseReport {
@@ -52,10 +59,12 @@ impl From<KeyboardReport> for usbd_hid::descriptor::KeyboardReport {
     }
 }
 
+#[non_exhaustive]
+#[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum HidReport {
-    Mouse(MouseReport),
-    Keyboard(KeyboardReport),
+    Mouse(MouseReport) = 0,
+    Keyboard(KeyboardReport) = 1,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]

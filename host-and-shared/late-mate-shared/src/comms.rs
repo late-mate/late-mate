@@ -16,14 +16,14 @@ const fn max(a: usize, b: usize) -> usize {
 // COBS adds 2 bytes: 1 byte of overhead + sentinel (0)
 const BUFFER_OVERHEAD: usize = 4;
 pub const MAX_BUFFER_SIZE: usize = max(
-    HostToDevice::POSTCARD_MAX_SIZE,
-    DeviceToHost::POSTCARD_MAX_SIZE,
+    host_to_device::Envelope::POSTCARD_MAX_SIZE,
+    device_to_host::Envelope::POSTCARD_MAX_SIZE,
 ) + BUFFER_OVERHEAD;
 
-// const _: () = assert_eq!(
-//     MAX_BUFFER_SIZE, 1024,
-//     "max postcard buffer size should be reasonable"
-// );
+const _: () = assert!(
+    MAX_BUFFER_SIZE < 256,
+    "max postcard buffer size should be reasonable"
+);
 
 pub struct CrcCobsAccumulator {
     buf: [u8; MAX_BUFFER_SIZE],
@@ -34,7 +34,7 @@ pub struct CrcCobsAccumulator {
 // https://github.com/jamesmunns/postcard/issues/117
 // see https://github.com/jamesmunns/postcard/blob/393e18aeee3fe59872ad9231da225170c8296d56/src/accumulator.rs
 // for more comments
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub enum FeedResult<'a, T> {
     /// Consumed all data, still pending.
     Consumed,

@@ -1,17 +1,15 @@
 use crate::serial_number::SerialNumber;
-use crate::{HidSignal, RawMutex, FROM_HOST_N_BUFFERED, TO_HOST_N_BUFFERED};
+use crate::{CommsFromHost, CommsToHost, HidSignal};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
-use embassy_sync::channel::Channel;
-use embassy_sync::mutex::Mutex;
 use embassy_usb::{Builder, Config};
-use late_mate_shared::{DeviceToHost, HostToDevice, USB_PID, USB_VID};
+use late_mate_shared::{USB_PID, USB_VID};
 use static_cell::StaticCell;
 
 mod device;
-pub mod hid;
+pub mod hid_sender;
 pub mod serial_comms;
 
 // maximum for full speed USB
@@ -68,10 +66,9 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
 pub fn init(
     spawner: &Spawner,
     driver: Driver<'static, USB>,
-    from_host: &'static Channel<RawMutex, HostToDevice, FROM_HOST_N_BUFFERED>,
-    to_host: &'static Channel<RawMutex, DeviceToHost, TO_HOST_N_BUFFERED>,
+    from_host: &'static CommsFromHost,
+    to_host: &'static CommsToHost,
     hid_signal: &'static HidSignal,
-    measurement_buffer: &'static Mutex<RawMutex, crate::scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
 ) {
     info!("Initializing usb");
@@ -79,13 +76,7 @@ pub fn init(
     let mut builder = init_usb(driver, serial_number);
 
     serial_comms::init(spawner, &mut builder, from_host, to_host);
-    hid::init(
-        spawner,
-        &mut builder,
-        to_host,
-        hid_signal,
-        measurement_buffer,
-    );
+    hid_sender::init(spawner, &mut builder);
 
     device::init(spawner, builder);
 }

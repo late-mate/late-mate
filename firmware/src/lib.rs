@@ -21,7 +21,8 @@ use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
 
-use late_mate_shared::{DeviceToHost, HidRequest, HostToDevice};
+use late_mate_shared::comms::hid::HidRequest;
+use late_mate_shared::comms::{device_to_host, host_to_device};
 
 pub const HARDWARE_VERSION: u8 = 1;
 // todo: maybe just use a git hash?
@@ -42,8 +43,8 @@ type RawMutex = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 const FROM_HOST_N_BUFFERED: usize = 4;
 const TO_HOST_N_BUFFERED: usize = 4;
 
-type CommsFromHost = Channel<RawMutex, HostToDevice, FROM_HOST_N_BUFFERED>;
-type CommsToHost = Channel<RawMutex, DeviceToHost, TO_HOST_N_BUFFERED>;
+type CommsFromHost = Channel<RawMutex, host_to_device::Envelope, FROM_HOST_N_BUFFERED>;
+type CommsToHost = Channel<RawMutex, device_to_host::Envelope, TO_HOST_N_BUFFERED>;
 
 pub static COMMS_FROM_HOST: CommsFromHost = Channel::new();
 pub static COMMS_TO_HOST: CommsToHost = Channel::new();
@@ -82,7 +83,7 @@ pub enum HidAckKind {
     Buffered,
 }
 
-pub type HidSignal = Signal<RawMutex, (HidRequest, HidAckKind)>;
+pub type HidSignal = Signal<RawMutex, (host_to_device::RequestId, HidRequest, HidAckKind)>;
 pub static HID_SIGNAL: HidSignal = Signal::new();
 
 // Must be equal to the size of the flash chip. Pico uses a 2MB chip

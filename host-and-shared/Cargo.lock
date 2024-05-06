@@ -1079,6 +1079,7 @@ dependencies = [
  "cobs",
  "const_format",
  "crc",
+ "defmt",
  "heapless 0.7.17",
  "paste",
  "postcard-derive",

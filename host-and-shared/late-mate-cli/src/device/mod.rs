@@ -41,7 +41,7 @@ pub async fn bg_request_loop(
             .await
             .context("is_active_sender is dropped => device is dropped => exit")?;
         tx_sender
-            .send(HostToDevice::MeasureBackground { duration_ms: 1300 })
+            .send(HostToDevice::StreamLightLevel { duration_ms: 1300 })
             .await
             .context("device tx channel is closed => device is disconnected => exit")?;
         sleep(Duration::from_millis(1000)).await;
