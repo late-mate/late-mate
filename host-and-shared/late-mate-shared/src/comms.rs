@@ -1,5 +1,3 @@
-use crate::comms::device_to_host::DeviceToHost;
-use crate::comms::host_to_device::HostToDevice;
 use postcard::de_flavors::crc::from_bytes_u16;
 use postcard::experimental::max_size::MaxSize;
 use postcard::ser_flavors::crc::to_slice_u16;

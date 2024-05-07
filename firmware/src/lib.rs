@@ -10,19 +10,11 @@ mod scenario_buffer;
 mod serial_number;
 mod tasks;
 
-use crate::tasks::light_sensor::LightReading;
 use crate::tasks::{indicator_led, light_sensor, reactor, usb};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
-use embassy_sync::channel::Channel;
-use embassy_sync::pubsub;
-use embassy_sync::pubsub::PubSubChannel;
-use embassy_sync::signal::Signal;
 use embassy_time::Timer;
-
-use late_mate_shared::comms::hid::HidRequest;
-use late_mate_shared::comms::{device_to_host, host_to_device};
 
 pub const HARDWARE_VERSION: u8 = 1;
 // todo: maybe just use a git hash?
@@ -37,54 +29,10 @@ bind_interrupts!(struct UsbIrqs {
 // but you want a singleton."
 // I don't think we will use those channel in interrupts (Embassy handles those), plus
 // we don't use the second core (yet?), so this one should be fine
-type RawMutex = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+type MutexKind = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 
-// max number of serial in/out messages that can be buffered before waiting for more space
-const FROM_HOST_N_BUFFERED: usize = 4;
-const TO_HOST_N_BUFFERED: usize = 4;
-
-type CommsFromHost = Channel<RawMutex, host_to_device::Envelope, FROM_HOST_N_BUFFERED>;
-type CommsToHost = Channel<RawMutex, device_to_host::Envelope, TO_HOST_N_BUFFERED>;
-
-pub static COMMS_FROM_HOST: CommsFromHost = Channel::new();
-pub static COMMS_TO_HOST: CommsToHost = Channel::new();
-
-const LIGHT_READINGS_N_BUFFERED: usize = 1;
-// reactor x2 (in measurements and in background monitoring) and LED x1
-const LIGHT_READINGS_MAX_SUBS: usize = 3;
-const LIGHT_READINGS_MAX_PUBS: usize = 1;
-type LightReadings = PubSubChannel<
-    RawMutex,
-    LightReading,
-    LIGHT_READINGS_N_BUFFERED,
-    LIGHT_READINGS_MAX_SUBS,
-    LIGHT_READINGS_MAX_PUBS,
->;
-type LightReadingsSubscriber = pubsub::Subscriber<
-    'static,
-    RawMutex,
-    LightReading,
-    LIGHT_READINGS_N_BUFFERED,
-    LIGHT_READINGS_MAX_SUBS,
-    LIGHT_READINGS_MAX_PUBS,
->;
-type LightReadingsPublisher = pubsub::Publisher<
-    'static,
-    RawMutex,
-    LightReading,
-    LIGHT_READINGS_N_BUFFERED,
-    LIGHT_READINGS_MAX_SUBS,
-    LIGHT_READINGS_MAX_PUBS,
->;
-pub static LIGHT_READINGS: LightReadings = PubSubChannel::new();
-
-pub enum HidAckKind {
-    Immediate,
-    Buffered,
-}
-
-pub type HidSignal = Signal<RawMutex, (host_to_device::RequestId, HidRequest, HidAckKind)>;
-pub static HID_SIGNAL: HidSignal = Signal::new();
+// used by ResetToFirmwareUpdate to indicate disk activity
+pub const RED_LED_GPIO_PIN: i32 = 14;
 
 // Must be equal to the size of the flash chip. Pico uses a 2MB chip
 pub const FLASH_SIZE: usize = 2 * 1024 * 1024;
@@ -100,65 +48,27 @@ pub async fn main(spawner: Spawner) {
 
     let serial_number = serial_number::read(p.FLASH);
 
-    // todo: clocks?
-
     let clk = p.PIN_18;
     let mosi = p.PIN_19;
     let miso = p.PIN_16;
     let drdy = p.PIN_22;
 
-    light_sensor::init(
-        &spawner,
-        p.SPI0,
-        clk,
-        mosi,
-        miso,
-        p.DMA_CH0,
-        p.DMA_CH1,
-        drdy,
-        LIGHT_READINGS.publisher().unwrap(),
+    let (light_stream_sub, light_scenario_sub, light_led_sub) = light_sensor::init(
+        &spawner, p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, drdy,
     );
 
     let usb_driver = UsbDriver::new(p.USB, UsbIrqs);
 
-    let scenario_buffer = scenario_buffer::init();
-
-    usb::init(
-        &spawner,
-        usb_driver,
-        &COMMS_FROM_HOST,
-        &COMMS_TO_HOST,
-        &HID_SIGNAL,
-        scenario_buffer,
-        serial_number,
-    );
+    usb::run(&spawner, usb_driver, serial_number);
 
     reactor::init(
         &spawner,
-        &COMMS_FROM_HOST,
-        &COMMS_TO_HOST,
-        LIGHT_READINGS.subscriber().unwrap(),
-        LIGHT_READINGS.subscriber().unwrap(),
-        &HID_SIGNAL,
-        scenario_buffer,
+        light_stream_sub,
+        light_scenario_sub,
         serial_number,
     );
 
-    indicator_led::init(
-        &spawner,
-        LIGHT_READINGS.subscriber().unwrap(),
-        p.PWM_CH1,
-        p.PIN_2,
-    );
+    indicator_led::init(&spawner, light_led_sub, p.PWM_CH1, p.PIN_2);
 
-    //
-    // let adc = adc::Adc::new(p.ADC, AdcIrqs, adc::Config::default());
-    // let temp_chan = adc::Channel::new_temp_sensor(p.ADC_TEMP_SENSOR);
-    //
-    // temp_poller::init(&spawner, adc, temp_chan);
-    //
     core::future::pending::<()>().await;
 }
-
-// TODO:
-// - temperature in the status report?

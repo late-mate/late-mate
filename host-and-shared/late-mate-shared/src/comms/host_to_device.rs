@@ -3,23 +3,19 @@ use postcard::experimental::max_size::MaxSize;
 
 // All enums are repr(u8) to minimise size (default is isize = 4 bytes on the MCU)
 // All enums have explicit discriminants to make reverse compatibility simpler
-// All enums are non_exhaustive because, again, reverse compatibility (apparently
-// serde supports ignoring unknown variants on non_exhaustive enums, see
-// https://github.com/serde-rs/serde/pull/2570)
+// I considered making enums non_exhaustive, but I actually want compile time exhaustiveness
+// checks, and postcard seemingly won't be able to deal with unknown enum variants
+// see https://github.com/jamesmunns/postcard/issues/75
 
 pub type RequestId = u32;
 
-// non-exhaustive because CLI and firmware version can be different
-#[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum ScenarioStep {
     HidRequest(HidRequest) = 0,
-    StartTiming = 1,
-    Wait = 2,
+    Wait { ms: u16 } = 1,
 }
 
-#[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum HostToDevice {
@@ -27,9 +23,15 @@ pub enum HostToDevice {
     ResetToFirmwareUpdate = 254,
     GetStatus = 0,
     // can be called repeatedly with overlapping durations, works as a keepalive
-    StreamLightLevel { duration_ms: u16 } = 1,
+    StreamLightLevel {
+        duration_ms: u16,
+    } = 1,
     SendHidReport(HidRequest) = 2,
-    ExecuteScenario(heapless::Vec<ScenarioStep, 16>) = 3,
+    ExecuteScenario {
+        /// Index into the scenario vector (None if no measurement is needed)
+        start_timing_at_idx: Option<u8>,
+        scenario: heapless::Vec<ScenarioStep, 16>,
+    } = 3,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]

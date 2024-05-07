@@ -4,9 +4,9 @@ use postcard::experimental::max_size::MaxSize;
 
 // All enums are repr(u8) to minimise size (default is isize = 4 bytes on the MCU)
 // All enums have explicit discriminants to make reverse compatibility simpler
-// All enums are non_exhaustive because, again, reverse compatibility (apparently
-// serde supports ignoring unknown variants on non_exhaustive enums, see
-// https://github.com/serde-rs/serde/pull/2570)
+// I considered making enums non_exhaustive, but I actually want compile time exhaustiveness
+// checks, and postcard seemingly won't be able to deal with unknown enum variants
+// see https://github.com/jamesmunns/postcard/issues/75
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Version {
@@ -14,7 +14,6 @@ pub struct Version {
     pub firmware: u32,
 }
 
-#[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum MeasurementEvent {
@@ -28,7 +27,6 @@ pub struct Measurement {
     pub event: MeasurementEvent,
 }
 
-#[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub enum DeviceToHost {

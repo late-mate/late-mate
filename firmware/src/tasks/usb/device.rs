@@ -1,15 +1,18 @@
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
-use embassy_usb::Builder;
+use embassy_rp::usb::Driver;
+use embassy_usb::{Builder, UsbDevice};
 
 #[embassy_executor::task]
-pub async fn usb_task(builder: Builder<'static, embassy_rp::usb::Driver<'static, USB>>) {
-    let mut device = builder.build();
-    info!("Starting USB device");
-    device.run().await;
+pub async fn device_task(mut device: UsbDevice<'static, Driver<'static, USB>>) {
+    info!("Starting USB device task");
+
+    device.run().await
 }
 
-pub fn init(spawner: &Spawner, builder: Builder<'static, embassy_rp::usb::Driver<'static, USB>>) {
-    spawner.must_spawn(usb_task(builder));
+pub fn run(spawner: &Spawner, builder: Builder<'static, Driver<'static, USB>>) {
+    let device = builder.build();
+
+    spawner.must_spawn(device_task(device));
 }

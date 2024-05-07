@@ -1,11 +1,9 @@
-use crate::LightReadingsSubscriber;
-
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_rp::peripherals::{PIN_2, PWM_CH1};
 use embassy_rp::pwm::{Config as PwmConfig, Pwm};
 
-use crate::tasks::light_sensor::MAX_LIGHT_LEVEL;
+use crate::tasks::light_sensor::{LightReadingsSubscriber, MAX_LIGHT_LEVEL};
 use embassy_time::{Duration, Ticker};
 
 #[embassy_executor::task]

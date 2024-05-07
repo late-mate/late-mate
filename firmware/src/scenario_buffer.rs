@@ -1,8 +1,10 @@
-use crate::RawMutex;
+use crate::MutexKind;
+use defmt::error;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
 use heapless::Vec;
-use late_mate_shared::{Measurement, MeasurementEvent, MAX_SCENARIO_DURATION_MS};
+use late_mate_shared::comms::device_to_host::{Measurement, MeasurementEvent};
+use late_mate_shared::MAX_SCENARIO_DURATION_MS;
 use static_cell::ConstStaticCell;
 
 // 2khz measurements
@@ -16,11 +18,11 @@ pub struct Buffer {
 }
 
 /// Panics if it's called twice
-pub fn init() -> &'static Mutex<RawMutex, Buffer> {
+pub fn init() -> &'static Mutex<MutexKind, Buffer> {
     // ConstStaticCell guarantees that the initialiser (Buffer::new()) never goes on the stack.
     // Normally creating a buffer and assigning it somewhere create the buffer on the stack
     // first, but ConstStaticCell is `const`-fueled, so this is guaranteed to not happen
-    static BUFFER: ConstStaticCell<Mutex<RawMutex, Buffer>> =
+    static BUFFER: ConstStaticCell<Mutex<MutexKind, Buffer>> =
         ConstStaticCell::new(Mutex::new(Buffer::new()));
     BUFFER.take()
 }
@@ -38,21 +40,26 @@ impl Buffer {
         self.started_at = new_start;
     }
 
-    pub fn store(&mut self, happened_at: Instant, event: MeasurementEvent) {
+    /// Returns Error if the buffer will overflow
+    pub fn store(&mut self, happened_at: Instant, event: MeasurementEvent) -> Result<(), ()> {
         assert!(
             happened_at >= self.started_at,
-            "time travellers shouldn't use this code"
+            "Time travellers shouldn't use this code"
         );
-        assert!(
-            self.measurements.len() < (self.measurements.capacity() - 1),
-            "measurement buffer will overflow"
-        );
+
+        if self.measurements.len() >= (self.measurements.capacity() - 1) {
+            error!("Can't push into the scenario buffer, it will overflow");
+            return Err(());
+        }
 
         self.measurements
             .push(Measurement {
+                // todo: check for overflow
                 microsecond: (happened_at - self.started_at).as_micros() as u32,
                 event,
             })
-            .expect("measurement buffer push shouldn't fail")
+            .expect("Measurement buffer push shouldn't fail");
+
+        Ok(())
     }
 }

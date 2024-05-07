@@ -1,5 +1,4 @@
 use crate::serial_number::SerialNumber;
-use crate::{CommsFromHost, CommsToHost, HidSignal};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
@@ -13,7 +12,7 @@ pub mod hid_sender;
 pub mod serial_comms;
 
 // maximum for full speed USB
-pub const MAX_PACKET_SIZE: u16 = 64;
+pub const MAX_PACKET_SIZE: usize = 64;
 
 pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
     driver: D,
@@ -25,8 +24,6 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
     config.product = Some("Late Mate test board rev1");
     config.serial_number = Some(serial_number.hex_str());
     config.max_power = 100;
-    // todo: docstring suggests leaving it the default value (8)?
-    config.max_packet_size_0 = 64;
 
     // todo: wtf
     // Required for windows compatibility.
@@ -63,20 +60,14 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
     )
 }
 
-pub fn init(
-    spawner: &Spawner,
-    driver: Driver<'static, USB>,
-    from_host: &'static CommsFromHost,
-    to_host: &'static CommsToHost,
-    hid_signal: &'static HidSignal,
-    serial_number: &'static SerialNumber,
-) {
+pub fn run(spawner: &Spawner, driver: Driver<'static, USB>, serial_number: &'static SerialNumber) {
     info!("Initializing usb");
 
     let mut builder = init_usb(driver, serial_number);
+    let serial_usb = serial_comms::init_usb(&mut builder);
+    let hid_usb = hid_sender::init_usb(&mut builder);
+    device::run(spawner, builder);
 
-    serial_comms::init(spawner, &mut builder, from_host, to_host);
-    hid_sender::init(spawner, &mut builder);
-
-    device::init(spawner, builder);
+    serial_comms::run(spawner, serial_usb);
+    hid_sender::run(spawner, hid_usb);
 }

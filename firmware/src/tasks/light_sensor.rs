@@ -1,4 +1,4 @@
-use crate::LightReadingsPublisher;
+use crate::MutexKind;
 use ads1220::command::{Command, Length, Offset};
 use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
@@ -10,8 +10,21 @@ use embassy_rp::gpio::{Input, Pull};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, SPI0};
 use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
+use embassy_sync::pubsub;
+use embassy_sync::pubsub::PubSubChannel;
 use embassy_time::{Instant, Timer};
-use late_mate_shared::MeasurementEvent;
+use late_mate_shared::comms::device_to_host::MeasurementEvent;
+
+const N_BUFFERED: usize = 1;
+// reactor x2 (in measurements and in background monitoring) and LED x1
+const MAX_SUBS: usize = 3;
+const MAX_PUBS: usize = 1;
+type LightReadings = PubSubChannel<MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
+pub type LightReadingsSubscriber =
+    pubsub::Subscriber<'static, MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
+type LightReadingsPublisher =
+    pubsub::Publisher<'static, MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
+static CHANNEL: LightReadings = PubSubChannel::new();
 
 // the measured max value
 pub const MAX_LIGHT_LEVEL: u32 = (1 << 23) - 1;
@@ -43,10 +56,10 @@ async fn light_sensor_task(
     mut drdy: Input<'static, PIN_22>,
     light_readings_pub: LightReadingsPublisher,
 ) {
-    info!("configuring the ADC");
+    info!("Configuring the ADC");
     configure_adc(&mut spi).await;
 
-    info!("enabling the ADC");
+    info!("Enabling the ADC");
     let mut cmd_buf = [0u8; 1];
     cmd_buf[0] = Command::StartOrSync.into();
     spi.write(&cmd_buf).await.unwrap();
@@ -96,7 +109,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
     let mut readback_buf = [0u8; 4];
     spi.read(&mut readback_buf).await.unwrap();
 
-    assert_eq!(full_config, readback_buf);
+    assert_eq!(full_config, readback_buf, "ADC must be configurable");
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -109,7 +122,10 @@ pub fn init(
     tx_dma: DMA_CH0,
     rx_dma: DMA_CH1,
     drdy_pin: PIN_22,
-    light_readings_pub: LightReadingsPublisher,
+) -> (
+    LightReadingsSubscriber,
+    LightReadingsSubscriber,
+    LightReadingsSubscriber,
 ) {
     let mut spi_config = spi::Config::default();
     spi_config.frequency = 1_000_000;
@@ -130,5 +146,25 @@ pub fn init(
     );
     let drdy = Input::new(drdy_pin, Pull::Up);
 
-    spawner.must_spawn(light_sensor_task(spi, drdy, light_readings_pub));
+    let subscribers = (
+        CHANNEL
+            .subscriber()
+            .expect("There must be enough space for all subscribers"),
+        CHANNEL
+            .subscriber()
+            .expect("There must be enough space for all subscribers"),
+        CHANNEL
+            .subscriber()
+            .expect("There must be enough space for all subscribers"),
+    );
+
+    spawner.must_spawn(light_sensor_task(
+        spi,
+        drdy,
+        CHANNEL
+            .publisher()
+            .expect("There must be only one publisher and it should fit into the channel"),
+    ));
+
+    subscribers
 }
