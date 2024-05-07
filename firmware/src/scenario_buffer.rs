@@ -40,7 +40,7 @@ impl Buffer {
         self.started_at = new_start;
     }
 
-    /// Returns Error if the buffer will overflow
+    /// Returns Error if the buffer or the time counter will overflow
     pub fn store(&mut self, happened_at: Instant, event: MeasurementEvent) -> Result<(), ()> {
         assert!(
             happened_at >= self.started_at,
@@ -52,12 +52,20 @@ impl Buffer {
             return Err(());
         }
 
+        let microsecond_u64 = (happened_at - self.started_at).as_micros();
+        let microsecond = match u32::try_from(microsecond_u64) {
+            Ok(x) => x,
+            Err(_) => {
+                error!(
+                    "Time overflow while trying to push into the buffer ({:?})",
+                    microsecond_u64
+                );
+                return Err(());
+            }
+        };
+
         self.measurements
-            .push(Measurement {
-                // todo: check for overflow
-                microsecond: (happened_at - self.started_at).as_micros() as u32,
-                event,
-            })
+            .push(Measurement { microsecond, event })
             .expect("Measurement buffer push shouldn't fail");
 
         Ok(())
