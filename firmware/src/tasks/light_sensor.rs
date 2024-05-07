@@ -12,7 +12,7 @@ use embassy_rp::spi;
 use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use late_mate_shared::comms::device_to_host::MeasurementEvent;
 
 const N_BUFFERED: usize = 1;
@@ -20,14 +20,17 @@ const N_BUFFERED: usize = 1;
 const MAX_SUBS: usize = 3;
 const MAX_PUBS: usize = 1;
 type LightReadings = PubSubChannel<MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
-pub type LightReadingsSubscriber =
+pub type Subscriber =
     pubsub::Subscriber<'static, MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
-type LightReadingsPublisher =
+type Publisher =
     pubsub::Publisher<'static, MutexKind, LightReading, N_BUFFERED, MAX_SUBS, MAX_PUBS>;
 static CHANNEL: LightReadings = PubSubChannel::new();
 
 // the measured max value
 pub const MAX_LIGHT_LEVEL: u32 = (1 << 23) - 1;
+
+// How long to wait for a new value from the ADC. Normally it should provide a value every 0.5ms
+pub const TIMEOUT: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, Copy)]
 pub struct LightReading {
@@ -54,7 +57,7 @@ impl LightReading {
 async fn light_sensor_task(
     mut spi: Spi<'static, SPI0, Async>,
     mut drdy: Input<'static, PIN_22>,
-    light_readings_pub: LightReadingsPublisher,
+    light_readings_pub: Publisher,
 ) {
     info!("Configuring the ADC");
     configure_adc(&mut spi).await;
@@ -122,11 +125,7 @@ pub fn init(
     tx_dma: DMA_CH0,
     rx_dma: DMA_CH1,
     drdy_pin: PIN_22,
-) -> (
-    LightReadingsSubscriber,
-    LightReadingsSubscriber,
-    LightReadingsSubscriber,
-) {
+) -> (Subscriber, Subscriber, Subscriber) {
     let mut spi_config = spi::Config::default();
     spi_config.frequency = 1_000_000;
     // per the datasheet:

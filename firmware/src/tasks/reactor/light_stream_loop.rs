@@ -1,5 +1,4 @@
-use crate::tasks::light_sensor::LightReadingsSubscriber;
-use crate::tasks::reactor::LIGHT_TIMEOUT;
+use crate::tasks::light_sensor;
 use crate::tasks::usb::serial_comms;
 use crate::MutexKind;
 use defmt::{error, info};
@@ -18,7 +17,7 @@ struct Request {
 static STREAM_REQUEST: Channel<MutexKind, Option<Request>, 1> = Channel::new();
 
 #[embassy_executor::task]
-async fn light_stream_loop_task(mut light_stream_sub: LightReadingsSubscriber) {
+async fn light_stream_loop_task(mut light_stream_sub: light_sensor::Subscriber) {
     info!("starting the light stream loop");
 
     let mut active_request = None;
@@ -38,7 +37,7 @@ async fn light_stream_loop_task(mut light_stream_sub: LightReadingsSubscriber) {
                 Some(r) => r.request_id,
             };
 
-            match with_timeout(LIGHT_TIMEOUT, light_stream_sub.next_message_pure()).await {
+            match with_timeout(light_sensor::TIMEOUT, light_stream_sub.next_message_pure()).await {
                 Ok(reading) => {
                     serial_comms::write_to_host(device_to_host::Envelope {
                         request_id,
@@ -76,6 +75,6 @@ pub async fn stop_streaming() {
     STREAM_REQUEST.send(None).await;
 }
 
-pub fn init(spawner: &Spawner, light_stream_sub: LightReadingsSubscriber) {
+pub fn init(spawner: &Spawner, light_stream_sub: light_sensor::Subscriber) {
     spawner.must_spawn(light_stream_loop_task(light_stream_sub));
 }

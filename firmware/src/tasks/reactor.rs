@@ -2,7 +2,7 @@ mod light_scenario_loop;
 mod light_stream_loop;
 
 use crate::serial_number::SerialNumber;
-use crate::tasks::light_sensor::{LightReadingsSubscriber, MAX_LIGHT_LEVEL};
+use crate::tasks::light_sensor;
 use crate::tasks::usb::{hid_sender, serial_comms};
 use crate::{scenario_buffer, MutexKind, FIRMWARE_VERSION, HARDWARE_VERSION, RED_LED_GPIO_PIN};
 use defmt::{error, info};
@@ -13,18 +13,6 @@ use embassy_time::{Duration, Instant, Timer};
 use late_mate_shared::comms::device_to_host::{DeviceToHost, MeasurementEvent, Version};
 use late_mate_shared::comms::host_to_device::{HostToDevice, RequestId, ScenarioStep};
 use late_mate_shared::comms::{device_to_host, host_to_device};
-
-// How long to wait for a new value from the ADC. Normally it should provide a value every 0.5ms
-const LIGHT_TIMEOUT: Duration = Duration::from_millis(10);
-
-async fn reply_to_host(request_id: RequestId, response: Result<Option<DeviceToHost>, ()>) {
-    // todo: handle errors here?
-    serial_comms::write_to_host(device_to_host::Envelope {
-        request_id,
-        response,
-    })
-    .await
-}
 
 #[embassy_executor::task]
 async fn reactor_task(
@@ -52,7 +40,7 @@ async fn reactor_task(
                         hardware: HARDWARE_VERSION,
                         firmware: FIRMWARE_VERSION,
                     },
-                    max_light_level: MAX_LIGHT_LEVEL,
+                    max_light_level: light_sensor::MAX_LIGHT_LEVEL,
                     serial_number: serial_number.bytes(),
                 };
                 Ok(Some(status))
@@ -80,7 +68,12 @@ async fn reactor_task(
                 .map(|_| None),
         };
 
-        reply_to_host(request_id, response).await;
+        // todo: handle errors here?
+        serial_comms::write_to_host(device_to_host::Envelope {
+            request_id,
+            response,
+        })
+        .await;
 
         if should_reset_to_usb_boot {
             info!("resetting to USB firmware update mode");
@@ -166,8 +159,8 @@ async fn execute_scenario(
 
 pub fn init(
     spawner: &Spawner,
-    light_stream_sub: LightReadingsSubscriber,
-    light_scenario_sub: LightReadingsSubscriber,
+    light_stream_sub: light_sensor::Subscriber,
+    light_scenario_sub: light_sensor::Subscriber,
     serial_number: &'static SerialNumber,
 ) {
     let buffer = scenario_buffer::init();

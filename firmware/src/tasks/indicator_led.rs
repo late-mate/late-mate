@@ -1,4 +1,4 @@
-use crate::tasks::light_sensor::{LightReadingsSubscriber, MAX_LIGHT_LEVEL};
+use crate::tasks::light_sensor;
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_rp::peripherals::{PIN_2, PWM_CH1};
@@ -7,7 +7,7 @@ use embassy_time::{Duration, Ticker};
 
 #[embassy_executor::task]
 async fn indicator_led_task(
-    mut light_readings_sub: LightReadingsSubscriber,
+    mut light_readings_sub: light_sensor::Subscriber,
     pwm_channel: PWM_CH1,
     w_led_pin: PIN_2,
 ) {
@@ -22,7 +22,7 @@ async fn indicator_led_task(
 
     let mut ticker = Ticker::every(Duration::from_millis(7));
 
-    let fraction = 1. / (MAX_LIGHT_LEVEL as f32) * correction;
+    let fraction = 1. / (light_sensor::MAX_LIGHT_LEVEL as f32) * correction;
 
     let mut buffer = [0u32; 5];
     let mut idx = 0;
@@ -45,7 +45,7 @@ async fn indicator_led_task(
 
 pub fn init(
     spawner: &Spawner,
-    light_readings_sub: LightReadingsSubscriber,
+    light_readings_sub: light_sensor::Subscriber,
     pwm_channel: PWM_CH1,
     w_led_pin: PIN_2,
 ) {

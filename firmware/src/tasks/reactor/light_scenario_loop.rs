@@ -1,5 +1,4 @@
-use crate::tasks::light_sensor::LightReadingsSubscriber;
-use crate::tasks::reactor::LIGHT_TIMEOUT;
+use crate::tasks::light_sensor;
 use crate::{scenario_buffer, MutexKind};
 use defmt::{error, info};
 use embassy_executor::Spawner;
@@ -11,7 +10,7 @@ static SHOULD_RUN: Channel<MutexKind, bool, 1> = Channel::new();
 
 #[embassy_executor::task]
 async fn light_scenario_loop_task(
-    mut light_scenario_sub: LightReadingsSubscriber,
+    mut light_scenario_sub: light_sensor::Subscriber,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
 ) {
     info!("Starting the light scenario loop");
@@ -24,7 +23,12 @@ async fn light_scenario_loop_task(
         }
 
         'inner: while is_active {
-            match with_timeout(LIGHT_TIMEOUT, light_scenario_sub.next_message_pure()).await {
+            match with_timeout(
+                light_sensor::TIMEOUT,
+                light_scenario_sub.next_message_pure(),
+            )
+            .await
+            {
                 Ok(reading) => {
                     let push_result = buffer.lock().await.store(reading.instant, reading.into());
                     if push_result.is_err() {
@@ -60,7 +64,7 @@ pub async fn stop() {
 
 pub fn init(
     spawner: &Spawner,
-    light_scenario_sub: LightReadingsSubscriber,
+    light_scenario_sub: light_sensor::Subscriber,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
 ) {
     spawner.must_spawn(light_scenario_loop_task(light_scenario_sub, buffer));
