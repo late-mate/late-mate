@@ -1,17 +1,11 @@
 use crate::tasks::light_sensor::LightReadingsSubscriber;
 use crate::tasks::reactor::LIGHT_TIMEOUT;
-
 use crate::{scenario_buffer, MutexKind};
 use defmt::{error, info};
 use embassy_executor::Spawner;
-
 use embassy_sync::channel::Channel;
 use embassy_sync::mutex::Mutex;
-
 use embassy_time::{with_timeout, TimeoutError};
-
-
-
 
 static SHOULD_RUN: Channel<MutexKind, bool, 1> = Channel::new();
 

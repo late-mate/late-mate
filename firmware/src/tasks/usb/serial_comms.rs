@@ -4,7 +4,6 @@ use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_sync::channel::Channel;
-
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
 use embassy_usb::Builder;
 use late_mate_shared::comms::{

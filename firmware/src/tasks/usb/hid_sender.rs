@@ -6,7 +6,6 @@ use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_sync::channel::Channel;
 use embassy_time::Instant;
-
 use embassy_usb::class::hid::{Config, HidWriter, State};
 use embassy_usb::Builder;
 use late_mate_shared::comms::hid::{HidReport, HidRequest};
