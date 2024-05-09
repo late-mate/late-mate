@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Put `memory.x` in our output directory and ensure it's
     // on the linker search path.
     let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
@@ -37,4 +37,26 @@ fn main() {
     println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
     // https://defmt.ferrous-systems.com/setup.html#linker-script
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
+
+    let gitcl = vergen_gitcl::GitclBuilder::default()
+        // full SHA because the "short" version's length depends on git config
+        // adds VERGEN_GIT_SHA=4f19e8c2c49c01a88a3d98d14624d0be819eac47
+        .sha(false)
+        // ignore untracked because it can't (?) affect the build
+        // adds VERGEN_GIT_DIRTY=true
+        .dirty(false)
+        .build()?;
+
+    vergen_gitcl::Emitter::default()
+        .idempotent()
+        .fail_on_error()
+        .add_instructions(&gitcl)?
+        .emit()?;
+
+    // let git_commit: [u8; 4] = u32::from_str_radix(&env::var("VERGEN_GIT_SHA")?[..8], 16)
+    //     .expect("First 8 hex symbols of a git hash should be a valid base 16 u32")
+    //     .to_be_bytes();
+    // let is_dirty = env::var("VERGEN_GIT_DIRTY")? == "true";
+
+    Ok(())
 }

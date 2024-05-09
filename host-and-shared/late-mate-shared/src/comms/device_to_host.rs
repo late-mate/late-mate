@@ -9,9 +9,15 @@ use postcard::experimental::max_size::MaxSize;
 // see https://github.com/jamesmunns/postcard/issues/75
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+pub struct FirmwareVersion {
+    pub git_commit: [u8; 5], // 10 hex symbols
+    pub is_dirty: bool,
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 pub struct Version {
     pub hardware: u8,
-    pub firmware: u32,
+    pub firmware: FirmwareVersion,
 }
 
 #[repr(u8)]

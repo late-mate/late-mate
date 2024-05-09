@@ -6,19 +6,21 @@ use defmt::info;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 
+mod firmware_version;
 mod scenario_buffer;
 mod serial_number;
 mod tasks;
 
+use crate::firmware_version::get_git_firmware_version;
 use crate::tasks::{indicator_led, light_sensor, reactor, usb};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
 use embassy_time::Timer;
+use late_mate_shared::comms::device_to_host;
 
 pub const HARDWARE_VERSION: u8 = 1;
-// todo: maybe just use a git hash?
-pub const FIRMWARE_VERSION: u32 = 1;
+pub const FIRMWARE_VERSION: device_to_host::FirmwareVersion = get_git_firmware_version();
 
 bind_interrupts!(struct UsbIrqs {
     USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
