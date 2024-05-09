@@ -53,10 +53,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_instructions(&gitcl)?
         .emit()?;
 
-    // let git_commit: [u8; 4] = u32::from_str_radix(&env::var("VERGEN_GIT_SHA")?[..8], 16)
-    //     .expect("First 8 hex symbols of a git hash should be a valid base 16 u32")
-    //     .to_be_bytes();
-    // let is_dirty = env::var("VERGEN_GIT_DIRTY")? == "true";
-
     Ok(())
 }
