@@ -5,6 +5,10 @@ use postcard::ser_flavors::crc::to_slice_u16;
 pub mod device_to_host;
 pub mod hid;
 pub mod host_to_device;
+pub mod usb_interface;
+
+// reexported for reuse
+pub use postcard::Error as PostcardError;
 
 const fn max(a: usize, b: usize) -> usize {
     [a, b][(a < b) as usize]
@@ -18,6 +22,7 @@ pub const MAX_BUFFER_SIZE: usize = max(
     device_to_host::Envelope::POSTCARD_MAX_SIZE,
 ) + BUFFER_OVERHEAD;
 
+// currently at 173 bytes
 const _: () = assert!(
     MAX_BUFFER_SIZE < 256,
     "max postcard buffer size should be reasonable"

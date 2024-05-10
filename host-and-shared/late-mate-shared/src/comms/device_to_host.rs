@@ -8,33 +8,43 @@ use postcard::experimental::max_size::MaxSize;
 // checks, and postcard seemingly won't be able to deal with unknown enum variants
 // see https://github.com/jamesmunns/postcard/issues/75
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct FirmwareVersion {
     pub git_commit: [u8; 5], // 10 hex symbols
     pub is_dirty: bool,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct Version {
     pub hardware: u8,
     pub firmware: FirmwareVersion,
 }
 
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub enum MeasurementEvent {
     LightLevel(u32) = 0,
     HidReport(HidRequestId) = 1,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct Measurement {
     pub microsecond: u32,
     pub event: MeasurementEvent,
 }
 
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub enum DeviceToHost {
     /// GetStatus response
     Status {
@@ -52,11 +62,14 @@ pub enum DeviceToHost {
     } = 3,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct Envelope {
     /// The corresponding request's ID. Doesn't need to be unique, sreamed stuff like
     /// light levels or buffered measurements just stream with the same request_id
     pub request_id: RequestId,
-    /// Response content. There is no good error representation, so the error type is just ()
+    /// Response content. There is no good error representation that can be easily transmitted
+    /// from the MCU, so the error type is just ()
     pub response: Result<Option<DeviceToHost>, ()>,
 }

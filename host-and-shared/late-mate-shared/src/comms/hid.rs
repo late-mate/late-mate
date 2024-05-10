@@ -72,7 +72,9 @@ pub enum HidReport {
     Keyboard(KeyboardReport) = 1,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct HidRequest {
     pub id: HidRequestId,
     pub report: HidReport,

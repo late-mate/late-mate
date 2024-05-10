@@ -3,7 +3,7 @@ mod light_stream_loop;
 
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor;
-use crate::tasks::usb::{hid_sender, serial_comms};
+use crate::tasks::usb::{bulk_comms, hid_sender};
 use crate::{scenario_buffer, MutexKind, FIRMWARE_VERSION, HARDWARE_VERSION, RED_LED_GPIO_PIN};
 use defmt::{error, info};
 use embassy_executor::Spawner;
@@ -24,7 +24,7 @@ async fn reactor_task(
         let host_to_device::Envelope {
             request_id,
             request,
-        } = serial_comms::receive_from_host().await;
+        } = bulk_comms::receive_from_host().await;
 
         let mut should_reset_to_usb_boot = false;
 
@@ -69,7 +69,7 @@ async fn reactor_task(
         };
 
         // todo: handle errors here?
-        serial_comms::write_to_host(device_to_host::Envelope {
+        bulk_comms::write_to_host(device_to_host::Envelope {
             request_id,
             response,
         })
@@ -77,6 +77,9 @@ async fn reactor_task(
 
         if should_reset_to_usb_boot {
             info!("resetting to USB firmware update mode");
+
+            // sleep to allow the CLI to shut down cleanly
+            Timer::after(Duration::from_secs(1)).await;
 
             // no point in grabbing a GPIO pin peripheral here, it'll be used in the bootloader,
             // not in the firmware itself, so protecting it does nothing
@@ -142,7 +145,7 @@ async fn execute_scenario(
                 idx,
                 total,
             };
-            serial_comms::write_to_host(device_to_host::Envelope {
+            bulk_comms::write_to_host(device_to_host::Envelope {
                 request_id,
                 response: Ok(Some(resp)),
             })

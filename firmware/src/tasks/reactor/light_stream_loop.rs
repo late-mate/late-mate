@@ -1,5 +1,5 @@
 use crate::tasks::light_sensor;
-use crate::tasks::usb::serial_comms;
+use crate::tasks::usb::bulk_comms;
 use crate::MutexKind;
 use defmt::{error, info};
 use embassy_executor::Spawner;
@@ -39,7 +39,7 @@ async fn light_stream_loop_task(mut light_stream_sub: light_sensor::Subscriber) 
 
             match with_timeout(light_sensor::TIMEOUT, light_stream_sub.next_message_pure()).await {
                 Ok(reading) => {
-                    serial_comms::write_to_host(device_to_host::Envelope {
+                    bulk_comms::write_to_host(device_to_host::Envelope {
                         request_id,
                         response: Ok(Some(DeviceToHost::CurrentLightLevel(reading.reading))),
                     })

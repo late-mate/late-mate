@@ -1,15 +1,18 @@
-pub mod device;
+//pub mod device;
+mod device;
 pub mod nice_hid;
-pub mod server;
+// mod server;
+//pub mod server;
 
 use crate::device::Device;
-use anyhow::anyhow;
-use clap::{Parser, Subcommand};
+use anyhow::{anyhow, Context};
+use clap::{command, Parser, Subcommand};
 use late_mate_shared::comms::MAX_BUFFER_SIZE;
-use late_mate_shared::MAX_SCENARIO_DURATION_MS;
+use late_mate_shared::{MAX_SCENARIO_DURATION_MS, USB_PID, USB_VID};
 use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::task::{JoinError, JoinSet};
 use tokio::time::interval;
 
 #[derive(Parser)]
@@ -23,7 +26,7 @@ struct Cli {
 enum Command {
     /// Request status from the Late Mate device
     Status,
-    /// Stream current light level to console output (scaled to percents and throttled down to 120hz)
+    /// Stream current light level to console output (throttled down to 120hz)
     MonitorBackground,
     /// Run an http/websocket server
     RunServer {
@@ -56,93 +59,110 @@ fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
     serde_json::from_str(s).map_err(|e| anyhow!("Invalid JSON: {}", e))
 }
 
+async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
+    match command {
+        // Command::MonitorBackground => monitor_background(device).await?,
+        Command::Status => {
+            let status = device.get_status().await?;
+            println!("Late Mate status: {status:?}");
+        }
+        Command::ResetToFirmwareUpdate => {
+            device.reset_to_firmware_update().await?;
+            println!("Late Mate should remount as a mass storage device");
+        }
+        _ => println!("todo"),
+        // Command::SendHidReports { reports } => {
+        //     for report in reports {
+        //         device.send_hid_report(&report).await?;
+        //     }
+        // }
+        // Command::Measure {
+        //     duration,
+        //     start,
+        //     followup_after,
+        //     followup,
+        // } => {
+        //     if duration > MAX_SCENARIO_DURATION_MS {
+        //         return Err(anyhow!(
+        //             "Maximum scenario duration is {}ms",
+        //             MAX_SCENARIO_DURATION_MS
+        //         ));
+        //     }
+        //     let measurements = device
+        //         .measure(
+        //             duration as u16,
+        //             &start,
+        //             followup.map(|f| (followup_after.unwrap(), f)),
+        //         )
+        //         .await?;
+        //     for m in measurements {
+        //         println!("{m:?}");
+        //     }
+        // }
+        // Command::RunServer { interface, port } => {
+        //     server::run(device, interface, port).await?;
+        // }
+        // Command::ResetToFirmwareUpdate => {
+        //     device.reset_to_firmware_update().await?;
+        // }
+    };
+
+    Ok(())
+}
+
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    dbg!(MAX_BUFFER_SIZE);
+    let (device, mut device_subtasks) = Device::init().await?;
 
-    // todo: handle more than one device being connected
-
-    let mut device = Device::init().await?;
-
-    // this async block is important to bring commands to the same return type
-    let command_future = async {
-        match cli.command {
-            Command::MonitorBackground => monitor_background(device).await?,
-            Command::Status => {
-                let status = device.get_status().await?;
-                println!("Device status: {status:#?}");
-            }
-            Command::SendHidReports { reports } => {
-                for report in reports {
-                    device.send_hid_report(&report).await?;
-                }
-            }
-            Command::Measure {
-                duration,
-                start,
-                followup_after,
-                followup,
-            } => {
-                if duration > MAX_SCENARIO_DURATION_MS {
-                    return Err(anyhow!(
-                        "Maximum scenario duration is {}ms",
-                        MAX_SCENARIO_DURATION_MS
-                    ));
-                }
-                let measurements = device
-                    .measure(
-                        duration as u16,
-                        &start,
-                        followup.map(|f| (followup_after.unwrap(), f)),
-                    )
-                    .await?;
-                for m in measurements {
-                    println!("{m:?}");
-                }
-            }
-            Command::RunServer { interface, port } => {
-                server::run(device, interface, port).await?;
-            }
-            Command::ResetToFirmwareUpdate => {
-                device.reset_to_firmware_update().await?;
-            }
-        };
-        Ok::<(), anyhow::Error>(())
+    let result = tokio::select! {
+        command_result = run_command(device, cli.command) => command_result,
+        // This catches the case when one of the subtasks errored out/panicked.
+        // No point continuing, command_future will be cancelled, subtasks are torn down
+        subtask_result = device_subtasks.join_next() => {
+            print_join_error(subtask_result.expect("Subtasks shouldn't be empty"));
+            Err(anyhow!("Some device tasks have failed"))
+        }
     };
 
-    command_future.await?;
+    device_subtasks.abort_all();
+    while let Some(other_result) = device_subtasks.join_next().await {
+        print_join_error(other_result);
+    }
 
-    Ok(())
-
-    // tokio::select! {
-    //     // device_loop can only return an error, but if it does we should stop trying to poll
-    //     // the other future, it will fail anyway
-    //     ret = device_loop_future => ret,
-    //     ret = command_future => ret,
-    // }
+    result
 }
 
-pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
-    let mut receiver = device.subscribe_to_background();
-    device.background_enable();
-
-    // 120hz, no point streaming faster
-    let mut interval = interval(Duration::from_millis(1000 / 120));
-    loop {
-        match receiver.recv().await {
-            Ok(light_level) => {
-                println!(
-                    "{:.4}",
-                    (light_level as f64 / device.max_light_level as f64) * 100f64
-                )
-            }
-            Err(RecvError::Lagged(_)) => continue,
-            Err(RecvError::Closed) => return Err(anyhow!("Background light level channel closed")),
-        };
-        interval.tick().await;
+fn print_join_error(join_result: Result<anyhow::Result<()>, JoinError>) {
+    match join_result {
+        Err(e) if e.is_panic() => eprintln!("A device task panic:\n{e}"),
+        Err(e) if e.is_cancelled() => (),
+        Err(_) => unreachable!("JoinError should be either a panic or a cancellation"),
+        Ok(Err(e)) => eprintln!("A device task error:\n{e:?}"),
+        Ok(Ok(())) => (),
     }
 }
+
+// pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
+//     let mut receiver = device.subscribe_to_background();
+//     device.background_enable();
+//
+//     // 120hz, no point streaming faster
+//     let mut interval = interval(Duration::from_millis(1000 / 120));
+//     loop {
+//         match receiver.recv().await {
+//             Ok(light_level) => {
+//                 println!(
+//                     "{:.4}",
+//                     (light_level as f64 / device.max_light_level as f64) * 100f64
+//                 )
+//             }
+//             Err(RecvError::Lagged(_)) => continue,
+//             Err(RecvError::Closed) => return Err(anyhow!("Background light level channel closed")),
+//         };
+//         interval.tick().await;
+//     }
+// }
 
 // pub async fn hid_demo(
 //     device_tx: mpsc::Sender<HostToDevice>,

@@ -10,14 +10,18 @@ use postcard::experimental::max_size::MaxSize;
 pub type RequestId = u32;
 
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub enum ScenarioStep {
     HidRequest(HidRequest) = 0,
     Wait { ms: u16 } = 1,
 }
 
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub enum HostToDevice {
     // not 0 to make it less likely to trigger by accident
     ResetToFirmwareUpdate = 254,
@@ -34,7 +38,9 @@ pub enum HostToDevice {
     } = 3,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(
+    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
 pub struct Envelope {
     /// Unique request ID that is then returned back and can be used to correlate request/response.
     /// Reused for streamed responses.
