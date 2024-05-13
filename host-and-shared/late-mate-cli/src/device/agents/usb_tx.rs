@@ -1,7 +1,8 @@
-use crate::device::rxtx::ALIGNED_BUFFER_SIZE;
+use crate::device::usb::ALIGNED_BUFFER_SIZE;
+use crate::device::DeviceError;
 use anyhow::Context;
 use late_mate_shared::comms;
-use late_mate_shared::comms::{host_to_device, usb_interface};
+use late_mate_shared::comms::host_to_device;
 use nusb::transfer;
 use std::mem;
 use tokio::sync::mpsc;
@@ -42,13 +43,27 @@ async fn tx_loop(
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TxHandle {
+    sender: mpsc::Sender<host_to_device::Envelope>,
+}
+
+impl TxHandle {
+    pub async fn send(&self, envelope: host_to_device::Envelope) -> Result<(), DeviceError> {
+        self.sender
+            .send(envelope)
+            .await
+            .map_err(|_| DeviceError::Disconnected)
+    }
+}
+
 pub fn start(
-    join_set: &mut JoinSet<anyhow::Result<()>>,
+    agent_set: &mut JoinSet<anyhow::Result<()>>,
     out_queue: transfer::Queue<Vec<u8>>,
-) -> mpsc::Sender<host_to_device::Envelope> {
+) -> TxHandle {
     let (sender, receiver) = mpsc::channel::<host_to_device::Envelope>(16);
 
-    join_set.spawn(tx_loop(out_queue, receiver));
+    agent_set.spawn(tx_loop(out_queue, receiver));
 
-    sender
+    TxHandle { sender }
 }

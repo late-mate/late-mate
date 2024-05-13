@@ -1,5 +1,5 @@
-use crate::device::rxtx::ALIGNED_BUFFER_SIZE;
-use anyhow::{anyhow, Context};
+use crate::device::usb::ALIGNED_BUFFER_SIZE;
+use anyhow::Context;
 use late_mate_shared::comms;
 use late_mate_shared::comms::{device_to_host, CrcCobsAccumulator, FeedResult};
 use nusb::transfer;
@@ -77,13 +77,24 @@ async fn rx_loop(
     }
 }
 
+#[derive(Debug)]
+pub struct RxHandle {
+    receiver: mpsc::Receiver<device_to_host::Envelope>,
+}
+
+impl RxHandle {
+    pub async fn recv(&mut self) -> Option<device_to_host::Envelope> {
+        self.receiver.recv().await
+    }
+}
+
 pub fn start(
-    join_set: &mut JoinSet<anyhow::Result<()>>,
+    agent_set: &mut JoinSet<anyhow::Result<()>>,
     in_queue: transfer::Queue<transfer::RequestBuffer>,
-) -> mpsc::Receiver<device_to_host::Envelope> {
-    let (sender, receiver) = mpsc::channel::<device_to_host::Envelope>(16);
+) -> RxHandle {
+    let (sender, receiver) = mpsc::channel(16);
 
-    join_set.spawn(rx_loop(in_queue, sender));
+    agent_set.spawn(rx_loop(in_queue, sender));
 
-    receiver
+    RxHandle { receiver }
 }

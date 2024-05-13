@@ -1,28 +1,16 @@
-use crate::device::dispatcher::Dispatcher;
-use crate::device::rxtx::{rx, tx};
+use crate::device::agents::dispatcher::DispatcherHandle;
+use crate::device::agents::usb_tx::TxHandle;
+use crate::device::agents::{dispatcher, usb_rx, usb_tx};
+use crate::device::usb::UsbDevice;
 use crate::nice_hid;
-use anyhow::{anyhow, Context};
-use futures::StreamExt;
-use late_mate_shared::comms::device_to_host::{DeviceToHost, Measurement};
-use late_mate_shared::comms::hid::{HidRequest, HidRequestId};
-use late_mate_shared::comms::host_to_device::{HostToDevice, RequestId};
-use late_mate_shared::comms::{device_to_host, host_to_device, usb_interface};
-use late_mate_shared::{USB_PID, USB_VID};
-use std::collections::HashMap;
-use std::future::Future;
-use std::mem;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::{broadcast, mpsc, watch, Mutex as TokioMutex};
+use anyhow::Context;
+use late_mate_shared::comms::device_to_host::DeviceToHost;
+use late_mate_shared::comms::hid::HidRequest;
+use late_mate_shared::comms::host_to_device::HostToDevice;
 use tokio::task::JoinSet;
-use tokio::time::{sleep, Instant};
-use tokio_serial::SerialPortBuilderExt;
-use tokio_util::codec::Framed;
 
-mod dispatcher;
-mod rxtx;
+mod agents;
+mod usb;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DeviceError {
@@ -32,12 +20,14 @@ pub enum DeviceError {
     Disconnected,
 }
 
+pub type DeviceResult = Result<Option<DeviceToHost>, DeviceError>;
+
 #[derive(Debug, Clone)]
 pub struct Status {
-    hardware_version: String,
-    firmware_version: String,
-    serial_number: String,
-    max_light_level: u32,
+    pub hardware_version: String,
+    pub firmware_version: String,
+    pub serial_number: String,
+    pub max_light_level: u32,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -56,9 +46,12 @@ impl TryFrom<DeviceToHost> for Status {
                 max_light_level,
                 serial_number,
             } => Ok(Self {
-                hardware_version: "hello".into(),
-                firmware_version: "world".into(),
-                serial_number: "foobar".into(),
+                hardware_version: version.hardware.to_string(),
+                firmware_version: version.firmware.to_string(),
+                serial_number: serial_number
+                    .into_iter()
+                    .map(|b| format!("{:02X}", b).to_string())
+                    .collect(),
                 max_light_level,
             }),
             _ => Err(Self::Error::UnexpectedDeviceToHost),
@@ -70,8 +63,8 @@ impl TryFrom<DeviceToHost> for Status {
 pub struct Device {
     // bg_light: BackgroundLevelMonitor,
     // hid_counter: HidRequestId,
-    tx_sender: mpsc::Sender<host_to_device::Envelope>,
-    dispatcher: Arc<TokioMutex<Dispatcher>>,
+    usb_tx: TxHandle,
+    dispatcher: DispatcherHandle,
 
     pub max_light_level: u32,
 }
@@ -130,67 +123,46 @@ pub struct Device {
 //     }
 // }
 
-async fn acquire_device() -> anyhow::Result<nusb::Device> {
-    let mut first_attempt = true;
-    loop {
-        let connected_devices = nusb::list_devices()
-            .context("USB error while listing devices")?
-            .filter(|di| di.vendor_id() == USB_VID && di.product_id() == USB_PID)
-            .collect::<Vec<_>>();
-
-        if connected_devices.is_empty() {
-            if first_attempt {
-                eprintln!("No Late Mate detected, waiting for the device to be connected");
-                first_attempt = false;
-            }
-            sleep(Duration::from_secs(1)).await;
-            continue;
-        }
-
-        let first = &connected_devices[0];
-
-        let n = connected_devices.len();
-        if n > 1 {
-            eprintln!(
-                "More than one Late Mate detected ({}), using {}",
-                n,
-                first
-                    .serial_number()
-                    .expect("Late Mate devices must have serial numbers")
-            );
-        }
-
-        return first.open().context("USB error while opening the device");
-    }
-}
-
 impl Device {
     pub async fn init() -> anyhow::Result<(Self, JoinSet<anyhow::Result<()>>)> {
-        let device = acquire_device().await?;
-        let interface = device
-            .claim_interface(usb_interface::NUMBER)
-            .context("USB error while claiming the interface")?;
+        let usb_device = UsbDevice::acquire().await?;
+        let (in_queue, out_queue) = usb_device.into_queues()?;
 
-        let mut subtasks = JoinSet::new();
+        let mut agent_set = JoinSet::new();
 
-        let in_queue = interface.bulk_in_queue(usb_interface::ENDPOINT_INDEX | 0x80);
-        let out_queue = interface.bulk_out_queue(usb_interface::ENDPOINT_INDEX);
+        let usb_rx = usb_rx::start(&mut agent_set, in_queue);
+        let usb_tx = usb_tx::start(&mut agent_set, out_queue);
+        let dispatcher = dispatcher::start(&mut agent_set, usb_rx);
 
-        let rx_receiver = rx::start(&mut subtasks, in_queue);
-        let tx_sender = tx::start(&mut subtasks, out_queue);
-
-        let dispatcher = dispatcher::start(&mut subtasks, rx_receiver);
-
-        let mut tmp_self = Self {
-            tx_sender,
+        let mut self_ = Self {
+            usb_tx,
             dispatcher,
             max_light_level: 0,
         };
 
-        let device_status = tmp_self.get_status().await?;
-        tmp_self.max_light_level = device_status.max_light_level;
+        let device_status = self_.get_status().await?;
+        self_.max_light_level = device_status.max_light_level;
 
-        Ok((tmp_self, subtasks))
+        // todo: subtask watcher
+
+        Ok((self_, agent_set))
+    }
+
+    // todo: maybe add timeouts?
+    async fn one_off(&self, request: HostToDevice) -> anyhow::Result<Option<DeviceToHost>> {
+        let (mut receiver, envelope) = self.dispatcher.register_request(request).await;
+
+        self.usb_tx
+            .send(envelope)
+            .await
+            .context("USB device error while sending the command")?;
+
+        let response = receiver
+            .recv()
+            .await
+            .expect("Pending channels shouldn't be closed")
+            .context("USB device error while receiving the response")?;
+        Ok(response)
     }
 
     pub async fn get_status(&self) -> anyhow::Result<Status> {
@@ -209,33 +181,19 @@ impl Device {
         Ok(())
     }
 
-    async fn one_off(&self, request: HostToDevice) -> anyhow::Result<Option<DeviceToHost>> {
-        let mut receiver = self
-            .make_request(request)
-            .await
-            .context("USB device error while sending the command")?;
-        let response = receiver
-            .recv()
-            .await
-            .expect("Pending channels shouldn't be closed")
-            .context("USB device error while receiving the response")?;
-        Ok(response)
-    }
+    pub async fn send_hid_report(&mut self, report: &nice_hid::HidReport) -> anyhow::Result<()> {
+        let hid_request = HidRequest {
+            id: 0,
+            report: report.into(),
+        };
 
-    // pub async fn send_hid_report(&mut self, report: &nice_hid::HidReport) -> anyhow::Result<()> {
-    //     let hid_request = HidRequest {
-    //         id: self.new_hid_request_id(),
-    //         report: report.into(),
-    //     };
-    //     self.one_off(
-    //         HostToDevice::SendHidReport(hid_request),
-    //         Some(Box::new(move |msg| match msg {
-    //             DeviceToHost::HidReportSent(id) if id == hid_request.id => Some(()),
-    //             _ => None,
-    //         })),
-    //     )
-    //     .await
-    // }
+        let response = self
+            .one_off(HostToDevice::SendHidReport(hid_request))
+            .await?;
+        assert!(response.is_none());
+
+        Ok(())
+    }
     //
     // // todo: detect drop or stop subscribing in some way?
     // pub fn subscribe_to_background(&mut self) -> broadcast::Receiver<u32> {
@@ -347,90 +305,4 @@ impl Device {
     //     }
     // }
     //
-    // pub async fn reset_to_firmware_update(&mut self) -> anyhow::Result<Status> {
-    //     self.one_off(HostToDevice::ResetToFirmwareUpdate, None)
-    //         .await
-    // }
-    //
-    async fn make_request(
-        &self,
-        request: HostToDevice,
-    ) -> anyhow::Result<mpsc::Receiver<Result<Option<DeviceToHost>, DeviceError>>> {
-        let (receiver, envelope) = self.dispatcher.lock().await.register_request(request);
-
-        self.tx_sender
-            .send(envelope)
-            .await
-            .map_err(|_| DeviceError::Disconnected)?;
-
-        Ok(receiver)
-    }
-    //
-    // async fn one_off<T>(
-    //     &mut self,
-    //     command: HostToDevice,
-    //     resp_mapper: Option<Box<dyn Fn(DeviceToHost) -> Option<T> + Send + Sync>>,
-    // ) -> anyhow::Result<T> {
-    //     let response_timeout = Duration::from_secs(3);
-    //
-    //     let req_future = async {
-    //         self.tx_sender
-    //             // todo: this clone?
-    //             .send(command.clone())
-    //             .await
-    //             .context("Device TX channel was unexpectedly closed")
-    //     };
-    //     // I believe this should ~guarantee that we won't miss the response
-    //     let mut rx_receiver = self.rx_sender.subscribe();
-    //     let resp_future = async {
-    //         // todo: what am I doing if I don't expect a reply (eg reset to firmware update)?
-    //         loop {
-    //             match rx_receiver.recv().await {
-    //                 Ok(msg) => {
-    //                     if let Some(mapper) = &resp_mapper {
-    //                         match mapper(msg) {
-    //                             Some(result) => return Ok(result),
-    //                             None => continue,
-    //                         }
-    //                     }
-    //                 }
-    //                 Err(RecvError::Lagged(_)) => continue,
-    //                 Err(RecvError::Closed) => {
-    //                     return Err(anyhow!("Device RX channel was unexpectedly closed"))
-    //                 }
-    //             }
-    //         }
-    //     };
-    //
-    //     match tokio::try_join!(
-    //         req_future,
-    //         flat_timeout(
-    //             response_timeout,
-    //             anyhow!("Timeout while waiting for response to {command:?}"),
-    //             resp_future
-    //         )
-    //     ) {
-    //         Ok((_, status)) => Ok(status),
-    //         // have to rewrap to change the type ('Ok' branches are different)
-    //         Err(e) => Err(e),
-    //     }
-    // }
-    //
-    // fn new_hid_request_id(&mut self) -> HidRequestId {
-    //     let id = self.hid_counter;
-    //     self.hid_counter += 1;
-    //     id
-    // }
-}
-
-async fn flat_timeout<F: Future<Output = anyhow::Result<R>>, R>(
-    timeout_duration: Duration,
-    timeout_error: anyhow::Error,
-    future: F,
-) -> anyhow::Result<R> {
-    match tokio::time::timeout(timeout_duration, future).await {
-        Ok(Ok(x)) => Ok(x),
-        Ok(Err(e)) => Err(e),
-        Err(_) => Err(timeout_error),
-    }
 }

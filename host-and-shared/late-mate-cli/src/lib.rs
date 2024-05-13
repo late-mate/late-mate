@@ -1,19 +1,11 @@
-//pub mod device;
 mod device;
 pub mod nice_hid;
-// mod server;
-//pub mod server;
 
 use crate::device::Device;
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use clap::{command, Parser, Subcommand};
-use late_mate_shared::comms::MAX_BUFFER_SIZE;
-use late_mate_shared::{MAX_SCENARIO_DURATION_MS, USB_PID, USB_VID};
 use std::net::IpAddr;
-use std::time::Duration;
-use tokio::sync::broadcast::error::RecvError;
-use tokio::task::{JoinError, JoinSet};
-use tokio::time::interval;
+use tokio::task::JoinError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -64,11 +56,16 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
         // Command::MonitorBackground => monitor_background(device).await?,
         Command::Status => {
             let status = device.get_status().await?;
-            println!("Late Mate status: {status:?}");
+            println!("Connected to Late Mate");
+            println!("Hardware version: {}", status.hardware_version);
+            println!("Firmware version: {}", status.firmware_version);
+            println!("Serial number: {}", status.serial_number);
+            println!("Max light level: {}", status.max_light_level);
         }
         Command::ResetToFirmwareUpdate => {
             device.reset_to_firmware_update().await?;
-            println!("Late Mate should remount as a mass storage device");
+            println!("Firmware update started");
+            println!("Late Mate should mount as a mass storage device");
         }
         _ => println!("todo"),
         // Command::SendHidReports { reports } => {
