@@ -1,6 +1,8 @@
 use crate::comms::hid::HidRequestId;
 use crate::comms::host_to_device::RequestId;
 use postcard::experimental::max_size::MaxSize;
+
+#[cfg(feature = "std")]
 use std::fmt::{Display, Formatter};
 
 // All enums are repr(u8) to minimise size (default is isize = 4 bytes on the MCU)
@@ -21,10 +23,10 @@ pub struct FirmwareVersion {
 impl Display for FirmwareVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for b in self.git_commit {
-            write!(f, "{b:02x}")?;
+            write!(f, "{b:02X}")?;
         }
         if self.is_dirty {
-            write!(f, "*")?;
+            write!(f, "+")?;
         }
         Ok(())
     }
