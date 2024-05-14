@@ -1,8 +1,8 @@
-use crate::device::usb::ALIGNED_BUFFER_SIZE;
-use anyhow::Context;
+use crate::usb::ALIGNED_BUFFER_SIZE;
 use late_mate_shared::comms;
 use late_mate_shared::comms::{device_to_host, CrcCobsAccumulator, FeedResult};
 use nusb::transfer;
+use nusb::transfer::TransferError;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 
@@ -12,8 +12,8 @@ enum ProcessingError {
     BufferOverfull,
     #[error("Postcard error: {0:?}")]
     PostcardError(comms::PostcardError),
-    #[error("Channel receiver was dropped")]
-    ReceiverGone,
+    #[error("Downstream channel is closed")]
+    ChannelClosed,
 }
 
 async fn process_packet(
@@ -34,7 +34,7 @@ async fn process_packet(
                 sender
                     .send(data)
                     .await
-                    .map_err(|_| ProcessingError::ReceiverGone)?;
+                    .map_err(|_| ProcessingError::ChannelClosed)?;
                 remaining
             }
         }
@@ -43,10 +43,10 @@ async fn process_packet(
     Ok(())
 }
 
-async fn rx_loop(
+async fn usb_rx_loop(
     mut in_queue: transfer::Queue<transfer::RequestBuffer>,
     sender: mpsc::Sender<device_to_host::Envelope>,
-) -> anyhow::Result<()> {
+) {
     // this sets up a number of buffers that the kernel will later fill in
     let n_transfers = 8;
     while in_queue.pending() < n_transfers {
@@ -57,17 +57,30 @@ async fn rx_loop(
 
     loop {
         let completion = in_queue.next_complete().await;
-        completion
-            .status
-            .context("USB error while receiving data")?;
-        match process_packet(&sender, &mut cobs_acc, completion.data.as_slice()).await {
-            Ok(_) => (),
-            Err(ProcessingError::ReceiverGone) => {
-                // no point continuing, just exit
-                // todo: maybe log this?
-                return Ok(());
+
+        // I can't associate the error with a particular request anyway, so the best I can do
+        // is to log and swallow errors + rely on timeouts,
+        // The only exception is the Disconnected error, there is no point going on
+        match completion.status {
+            Err(TransferError::Disconnected) => {
+                tracing::error!("USB device disconnected, USB RX loop exiting");
+                break;
             }
-            other @ Err(_) => return other.context("Error while processing a USB packet"),
+            Err(e) => {
+                tracing::error!("USB RX error: {e}");
+            }
+            Ok(_) => {
+                match process_packet(&sender, &mut cobs_acc, completion.data.as_slice()).await {
+                    Ok(_) => (),
+                    Err(ProcessingError::ChannelClosed) => {
+                        tracing::info!("Envelope receiver is dropped, USB RX loop exiting");
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::error!("USB packet deserialisation error: {e}");
+                    }
+                }
+            }
         }
 
         in_queue.submit(transfer::RequestBuffer::reuse(
@@ -78,23 +91,23 @@ async fn rx_loop(
 }
 
 #[derive(Debug)]
-pub struct RxHandle {
+pub struct UsbRxHandle {
     receiver: mpsc::Receiver<device_to_host::Envelope>,
 }
 
-impl RxHandle {
+impl UsbRxHandle {
     pub async fn recv(&mut self) -> Option<device_to_host::Envelope> {
         self.receiver.recv().await
     }
 }
 
 pub fn start(
-    agent_set: &mut JoinSet<anyhow::Result<()>>,
+    agent_set: &mut JoinSet<()>,
     in_queue: transfer::Queue<transfer::RequestBuffer>,
-) -> RxHandle {
+) -> UsbRxHandle {
     let (sender, receiver) = mpsc::channel(16);
 
-    agent_set.spawn(rx_loop(in_queue, sender));
+    agent_set.spawn(usb_rx_loop(in_queue, sender));
 
-    RxHandle { receiver }
+    UsbRxHandle { receiver }
 }

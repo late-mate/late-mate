@@ -6,13 +6,8 @@ edition = "2021"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["rt", "macros", "io-util", "time", "sync"] }
-tokio-serial = "5"
-
-late-mate-shared = { path = "../late-mate-shared", features = ["std"] }
 thiserror = "1"
 anyhow = { version = "1", features = ["backtrace"] }
-usbd-hid = "0.7"
-tokio-util = { version = "0.7.10", features = ["codec"] }
 futures = "0.3.30"
 serde = { version = "1", features = ["derive", "alloc"] }
 serde_json = "1"
@@ -24,4 +19,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 headers = "0.4"
 ts-rs = "8.1.0"
-nusb = "0.1.9"
+
+late-mate-device = { path = "../late-mate-device" }

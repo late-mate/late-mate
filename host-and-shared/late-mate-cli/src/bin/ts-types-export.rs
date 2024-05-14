@@ -13,8 +13,8 @@ struct Cli {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    late_mate_cli::server::api::ClientToServer::export_all_to(&cli.directory)?;
-    late_mate_cli::server::api::ServerToClient::export_all_to(&cli.directory)?;
+    // late_mate_cli::server::api::ClientToServer::export_all_to(&cli.directory)?;
+    // late_mate_cli::server::api::ServerToClient::export_all_to(&cli.directory)?;
 
     Ok(())
 }

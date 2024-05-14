@@ -1,4 +1,4 @@
-use anyhow::Context;
+use crate::Error;
 use late_mate_shared::comms::usb_interface;
 use late_mate_shared::{comms, USB_PID, USB_VID};
 use nusb::transfer;
@@ -18,12 +18,12 @@ pub type InQueue = transfer::Queue<transfer::RequestBuffer>;
 pub type OutQueue = transfer::Queue<Vec<u8>>;
 
 impl UsbDevice {
-    pub async fn acquire() -> anyhow::Result<Self> {
+    pub async fn acquire() -> Result<Self, Error> {
         let mut first_attempt = true;
 
         loop {
             let connected_devices = nusb::list_devices()
-                .context("USB error while listing devices")?
+                .map_err(|e| Error::UsbError("listing devices", e))?
                 .filter(|di| di.vendor_id() == USB_VID && di.product_id() == USB_PID)
                 .collect::<Vec<_>>();
 
@@ -49,17 +49,19 @@ impl UsbDevice {
                 );
             }
 
-            let nusb_device = first.open().context("USB error while opening the device")?;
+            let nusb_device = first
+                .open()
+                .map_err(|e| Error::UsbError("opening the device", e))?;
 
             return Ok(Self { nusb_device });
         }
     }
 
-    pub fn into_queues(self) -> anyhow::Result<(InQueue, OutQueue)> {
+    pub fn into_queues(self) -> Result<(InQueue, OutQueue), Error> {
         let interface = self
             .nusb_device
             .claim_interface(usb_interface::NUMBER)
-            .context("USB error while claiming the interface")?;
+            .map_err(|e| Error::UsbError("claiming the interface", e))?;
 
         let in_queue = interface.bulk_in_queue(usb_interface::ENDPOINT_INDEX | 0x80);
         let out_queue = interface.bulk_out_queue(usb_interface::ENDPOINT_INDEX);

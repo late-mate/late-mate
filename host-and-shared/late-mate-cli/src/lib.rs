@@ -1,11 +1,8 @@
-mod device;
-pub mod nice_hid;
-
-use crate::device::Device;
 use anyhow::anyhow;
 use clap::{command, Parser, Subcommand};
+use late_mate_device::hid::HidReport;
+use late_mate_device::Device;
 use std::net::IpAddr;
-use tokio::task::JoinError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -30,24 +27,24 @@ enum Command {
     /// Send HID reports to the device. Accepts a list of JSON-encoded HID report structures
     SendHidReports {
         #[arg(value_parser(parse_hid_report))]
-        reports: Vec<nice_hid::HidReport>,
+        reports: Vec<HidReport>,
     },
     /// Run a single latency measurement
     Measure {
         #[arg(long, default_value = "300")]
         duration: u64,
         #[arg(long, value_parser(parse_hid_report))]
-        start: nice_hid::HidReport,
+        start: HidReport,
         #[arg(long, requires = "followup")]
         followup_after: Option<u16>,
         #[arg(long, value_parser(parse_hid_report), requires = "followup_after")]
-        followup: Option<nice_hid::HidReport>,
+        followup: Option<HidReport>,
     },
     /// Request device reset to firmware update mode
     ResetToFirmwareUpdate,
 }
 
-fn parse_hid_report(s: &str) -> Result<nice_hid::HidReport, anyhow::Error> {
+fn parse_hid_report(s: &str) -> Result<HidReport, anyhow::Error> {
     serde_json::from_str(s).map_err(|e| anyhow!("Invalid JSON: {}", e))
 }
 
@@ -110,34 +107,9 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let (device, mut device_subtasks) = Device::init().await?;
+    let device = Device::init().await?;
 
-    let result = tokio::select! {
-        command_result = run_command(device, cli.command) => command_result,
-        // This catches the case when one of the subtasks errored out/panicked.
-        // No point continuing, command_future will be cancelled, subtasks are torn down
-        subtask_result = device_subtasks.join_next() => {
-            print_join_error(subtask_result.expect("Subtasks shouldn't be empty"));
-            Err(anyhow!("Some device tasks have failed"))
-        }
-    };
-
-    device_subtasks.abort_all();
-    while let Some(other_result) = device_subtasks.join_next().await {
-        print_join_error(other_result);
-    }
-
-    result
-}
-
-fn print_join_error(join_result: Result<anyhow::Result<()>, JoinError>) {
-    match join_result {
-        Err(e) if e.is_panic() => eprintln!("A device task panic:\n{e}"),
-        Err(e) if e.is_cancelled() => (),
-        Err(_) => unreachable!("JoinError should be either a panic or a cancellation"),
-        Ok(Err(e)) => eprintln!("A device task error:\n{e:?}"),
-        Ok(Ok(())) => (),
-    }
+    run_command(device, cli.command).await
 }
 
 // pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {

@@ -1,26 +1,34 @@
-use crate::device::agents::dispatcher::DispatcherHandle;
-use crate::device::agents::usb_tx::TxHandle;
-use crate::device::agents::{dispatcher, usb_rx, usb_tx};
-use crate::device::usb::UsbDevice;
-use crate::nice_hid;
-use anyhow::Context;
+use crate::agents::dispatcher::DispatcherHandle;
+use crate::agents::usb_tx::UsbTxHandle;
+use crate::agents::{agent_watcher, dispatcher, usb_rx, usb_tx};
+use crate::usb::UsbDevice;
 use late_mate_shared::comms::device_to_host::DeviceToHost;
 use late_mate_shared::comms::hid::HidRequest;
 use late_mate_shared::comms::host_to_device::HostToDevice;
+use late_mate_shared::MAX_SCENARIO_DURATION_MS;
+use std::time::Duration;
 use tokio::task::JoinSet;
+use tokio::time::timeout;
 
 mod agents;
+pub mod hid;
 mod usb;
 
 #[derive(Debug, thiserror::Error)]
-pub enum DeviceError {
+pub enum Error {
     #[error("Late Mate encountered an error. Check the device log to find more details")]
     OnDeviceError,
     #[error("Late Mate disconnected")]
     Disconnected,
+    #[error("USB error while {0}")]
+    UsbError(&'static str, #[source] nusb::Error),
+    #[error("USB transfer error while {0}")]
+    UsbTransferError(&'static str, #[source] nusb::transfer::TransferError),
+    #[error("Timeout while trying to execute an operation")]
+    Timeout,
 }
 
-pub type DeviceResult = Result<Option<DeviceToHost>, DeviceError>;
+type ResponseResult = Result<Option<DeviceToHost>, Error>;
 
 #[derive(Debug, Clone)]
 pub struct Status {
@@ -31,13 +39,13 @@ pub struct Status {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum StatusError {
-    #[error("Unexpected DeviceToHost message")]
-    UnexpectedDeviceToHost,
+pub enum StatusConversionError {
+    #[error("Expected a Status message")]
+    NotStatus,
 }
 
 impl TryFrom<DeviceToHost> for Status {
-    type Error = StatusError;
+    type Error = StatusConversionError;
 
     fn try_from(value: DeviceToHost) -> Result<Self, Self::Error> {
         match value {
@@ -54,16 +62,14 @@ impl TryFrom<DeviceToHost> for Status {
                     .collect(),
                 max_light_level,
             }),
-            _ => Err(Self::Error::UnexpectedDeviceToHost),
+            _ => Err(Self::Error::NotStatus),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Device {
-    // bg_light: BackgroundLevelMonitor,
-    // hid_counter: HidRequestId,
-    usb_tx: TxHandle,
+    usb_tx: UsbTxHandle,
     dispatcher: DispatcherHandle,
 
     pub max_light_level: u32,
@@ -124,15 +130,16 @@ pub struct Device {
 // }
 
 impl Device {
-    pub async fn init() -> anyhow::Result<(Self, JoinSet<anyhow::Result<()>>)> {
+    pub async fn init() -> Result<Self, Error> {
         let usb_device = UsbDevice::acquire().await?;
         let (in_queue, out_queue) = usb_device.into_queues()?;
 
-        let mut agent_set = JoinSet::new();
+        let mut agent_set: JoinSet<()> = JoinSet::new();
 
         let usb_rx = usb_rx::start(&mut agent_set, in_queue);
         let usb_tx = usb_tx::start(&mut agent_set, out_queue);
         let dispatcher = dispatcher::start(&mut agent_set, usb_rx);
+        agent_watcher::start(agent_set);
 
         let mut self_ = Self {
             usb_tx,
@@ -143,45 +150,46 @@ impl Device {
         let device_status = self_.get_status().await?;
         self_.max_light_level = device_status.max_light_level;
 
-        // todo: subtask watcher
-
-        Ok((self_, agent_set))
+        Ok(self_)
     }
 
-    // todo: maybe add timeouts?
-    async fn one_off(&self, request: HostToDevice) -> anyhow::Result<Option<DeviceToHost>> {
+    async fn one_off(&self, request: HostToDevice) -> ResponseResult {
         let (mut receiver, envelope) = self.dispatcher.register_request(request).await;
 
         self.usb_tx
             .send(envelope)
             .await
-            .context("USB device error while sending the command")?;
+            .expect("Device should be ready");
 
-        let response = receiver
-            .recv()
-            .await
-            .expect("Pending channels shouldn't be closed")
-            .context("USB device error while receiving the response")?;
-        Ok(response)
+        timeout(
+            Duration::from_millis(MAX_SCENARIO_DURATION_MS + 1000),
+            receiver.recv(),
+        )
+        .await
+        .map_err(|_| Error::Timeout)?
+        .expect("Pending responses should not be dropped")
     }
 
-    pub async fn get_status(&self) -> anyhow::Result<Status> {
+    pub async fn get_status(&self) -> Result<Status, Error> {
         let response = self
             .one_off(HostToDevice::GetStatus)
             .await?
-            .expect("The response should be present");
+            .expect("Status response should be present");
 
-        Ok(Status::try_from(response).expect("The response should be of correct type"))
+        Ok(Status::try_from(response).expect("Status response should be of correct type"))
     }
 
-    pub async fn reset_to_firmware_update(&self) -> anyhow::Result<()> {
+    pub async fn reset_to_firmware_update(&self) -> Result<(), Error> {
         let response = self.one_off(HostToDevice::ResetToFirmwareUpdate).await?;
-        assert!(response.is_none());
+        assert!(
+            response.is_none(),
+            "ResetToFirmwareUpdate shouldn't receive a response"
+        );
 
         Ok(())
     }
 
-    pub async fn send_hid_report(&mut self, report: &nice_hid::HidReport) -> anyhow::Result<()> {
+    pub async fn send_hid_report(&mut self, report: &hid::HidReport) -> Result<(), Error> {
         let hid_request = HidRequest {
             id: 0,
             report: report.into(),
@@ -190,7 +198,7 @@ impl Device {
         let response = self
             .one_off(HostToDevice::SendHidReport(hid_request))
             .await?;
-        assert!(response.is_none());
+        assert!(response.is_none(), "HidReport shouldn't receive a response");
 
         Ok(())
     }

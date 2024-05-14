@@ -1,3 +1,5 @@
+/// This is a neater/more convenient version of HID stuff from late-mate-shared
+
 #[non_exhaustive]
 #[derive(Debug, Eq, PartialEq, Clone, Copy, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[repr(u8)]

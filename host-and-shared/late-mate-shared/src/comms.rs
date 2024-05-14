@@ -180,7 +180,7 @@ pub fn encode<T: serde::Serialize + MaxSize>(msg: &T, result_buffer: &mut [u8]) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::comms::device_to_host::{Measurement, MeasurementEvent};
+    use crate::comms::device_to_host::{DeviceToHost, Measurement, MeasurementEvent};
 
     #[test]
     fn test_basic_roundtrip() {

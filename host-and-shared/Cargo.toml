@@ -4,7 +4,7 @@ resolver = "2"
 
 members = [
     "ads1220",
-    "late-mate-cli",
+    "late-mate-cli", "late-mate-device",
     "late-mate-shared",
     "late-mate-validation"
 ]
@@ -13,3 +13,13 @@ members = [
 #[profile.release]
 #codegen-units = 1
 #lto = "fat"
+
+[profile.dev]
+opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
