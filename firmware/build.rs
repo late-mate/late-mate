@@ -48,7 +48,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     vergen_gitcl::Emitter::default()
-        .idempotent()
         .fail_on_error()
         .add_instructions(&gitcl)?
         .emit()?;
