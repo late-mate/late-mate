@@ -1,4 +1,4 @@
-use crate::device::agents::rxtx::rx::RxHandle;
+use crate::device::agents::usb_rx::RxHandle;
 use crate::device::{DeviceError, DeviceResult};
 use late_mate_shared::comms::host_to_device::{HostToDevice, RequestId};
 use late_mate_shared::comms::{device_to_host, host_to_device};

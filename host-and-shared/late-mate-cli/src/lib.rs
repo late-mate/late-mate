@@ -56,11 +56,11 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
         // Command::MonitorBackground => monitor_background(device).await?,
         Command::Status => {
             let status = device.get_status().await?;
-            println!("Connected to Late Mate");
-            println!("Hardware version: {}", status.hardware_version);
-            println!("Firmware version: {}", status.firmware_version);
+            eprintln!("Connected to Late Mate!");
             println!("Serial number: {}", status.serial_number);
-            println!("Max light level: {}", status.max_light_level);
+            println!("Version:");
+            println!("  Hardware: {}", status.hardware_version);
+            println!("  Firmware: {}", status.firmware_version);
         }
         Command::ResetToFirmwareUpdate => {
             device.reset_to_firmware_update().await?;
