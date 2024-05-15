@@ -53,7 +53,7 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
         // Command::MonitorBackground => monitor_background(device).await?,
         Command::Status => {
             let status = device.get_status().await?;
-            eprintln!("Connected to Late Mate!");
+            println!("Connection: success");
             println!("Serial number: {}", status.serial_number);
             println!("Version:");
             println!("  Hardware: {}", status.hardware_version);
@@ -64,12 +64,13 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
             println!("Firmware update started");
             println!("Late Mate should mount as a mass storage device");
         }
+        Command::SendHidReports { reports } => {
+            for report in reports {
+                device.send_hid_report(&report).await?;
+            }
+            eprintln!("Done!");
+        }
         _ => println!("todo"),
-        // Command::SendHidReports { reports } => {
-        //     for report in reports {
-        //         device.send_hid_report(&report).await?;
-        //     }
-        // }
         // Command::Measure {
         //     duration,
         //     start,

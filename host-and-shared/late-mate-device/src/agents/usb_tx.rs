@@ -23,9 +23,6 @@ async fn usb_tx_loop(
                 break;
             }
         };
-        dbg!(&envelope);
-        dbg!(buf.len());
-        dbg!(buf.capacity());
         let used_len = comms::encode(&envelope, buf.as_mut_slice());
         buf.truncate(used_len);
 

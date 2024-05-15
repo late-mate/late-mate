@@ -189,7 +189,7 @@ impl Device {
         Ok(())
     }
 
-    pub async fn send_hid_report(&mut self, report: &hid::HidReport) -> Result<(), Error> {
+    pub async fn send_hid_report(&self, report: &hid::HidReport) -> Result<(), Error> {
         let hid_request = HidRequest {
             id: 0,
             report: report.into(),
