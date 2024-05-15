@@ -6,9 +6,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["rt", "macros", "io-util", "time", "sync"] }
 thiserror = "1"
-usbd-hid = "0.7"
 nusb = "0.1"
-tokio-util = { version = "0.7", features = ["codec"] }
 ts-rs = "8"
 serde = { version = "1", features = ["derive", "alloc"] }
 

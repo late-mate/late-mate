@@ -9,11 +9,6 @@ members = [
     "late-mate-validation"
 ]
 
-# todo: enable for production releases
-#[profile.release]
-#codegen-units = 1
-#lto = "fat"
-
 [profile.dev]
 opt-level = 3
 
@@ -22,4 +17,4 @@ opt-level = 3
 
 [profile.release]
 codegen-units = 1
-lto = "thin"
+lto = "fat"
