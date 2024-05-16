@@ -6,7 +6,6 @@ use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError};
 use late_mate_shared::comms::device_to_host;
-use late_mate_shared::comms::device_to_host::DeviceToHost;
 use late_mate_shared::comms::host_to_device::RequestId;
 
 struct Request {
@@ -41,7 +40,9 @@ async fn light_stream_loop_task(mut light_stream_sub: light_sensor::Subscriber) 
                 Ok(reading) => {
                     bulk_comms::write_to_host(device_to_host::Envelope {
                         request_id,
-                        response: Ok(Some(DeviceToHost::CurrentLightLevel(reading.reading))),
+                        response: Ok(Some(device_to_host::Message::CurrentLightLevel(
+                            reading.reading,
+                        ))),
                     })
                     .await;
                 }

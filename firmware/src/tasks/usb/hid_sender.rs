@@ -8,12 +8,12 @@ use embassy_sync::channel::Channel;
 use embassy_time::Instant;
 use embassy_usb::class::hid::{Config, HidWriter, State};
 use embassy_usb::Builder;
-use late_mate_shared::comms::hid::{HidReport, HidRequest};
+use late_mate_shared::comms;
 use log::error;
 use static_cell::StaticCell;
 use usbd_hid::descriptor::{KeyboardReport, MouseReport, SerializedDescriptor};
 
-static CHANNEL_IN: Channel<MutexKind, HidRequest, 1> = Channel::new();
+static CHANNEL_IN: Channel<MutexKind, comms::hid::HidRequest, 1> = Channel::new();
 static CHANNEL_OUT: Channel<MutexKind, Result<Instant, ()>, 1> = Channel::new();
 
 #[embassy_executor::task]
@@ -24,32 +24,35 @@ async fn hid_sender_task(
     info!("Starting USB HID sender loop");
 
     loop {
-        let HidRequest { report, .. } = CHANNEL_IN.receive().await;
+        let comms::hid::HidRequest { report, .. } = CHANNEL_IN.receive().await;
 
         // todo: remove to_usbd_hid, refactor
         let result = match report {
-            HidReport::Mouse(r) => match mouse_writer.write_serialize(&r.to_usbd_hid()).await {
-                Ok(_) => Ok(Instant::now()),
-                Err(e) => {
-                    error!("Endpoint error while trying to send a HID report: {:?}", e);
-                    Err(())
+            comms::hid::HidReport::Mouse(r) => {
+                match mouse_writer.write_serialize(&r.to_usbd_hid()).await {
+                    Ok(_) => Ok(Instant::now()),
+                    Err(e) => {
+                        error!("Endpoint error while trying to send a HID report: {:?}", e);
+                        Err(())
+                    }
                 }
-            },
-            HidReport::Keyboard(r) => match keyboard_writer.write_serialize(&r.to_usbd_hid()).await
-            {
-                Ok(_) => Ok(Instant::now()),
-                Err(e) => {
-                    error!("Endpoint error while trying to send a HID report: {:?}", e);
-                    Err(())
+            }
+            comms::hid::HidReport::Keyboard(r) => {
+                match keyboard_writer.write_serialize(&r.to_usbd_hid()).await {
+                    Ok(_) => Ok(Instant::now()),
+                    Err(e) => {
+                        error!("Endpoint error while trying to send a HID report: {:?}", e);
+                        Err(())
+                    }
                 }
-            },
+            }
         };
 
         CHANNEL_OUT.send(result).await;
     }
 }
 
-pub async fn send(hid_request: HidRequest) -> Result<Instant, ()> {
+pub async fn send(hid_request: comms::hid::HidRequest) -> Result<Instant, ()> {
     CHANNEL_IN.send(hid_request).await;
     CHANNEL_OUT.receive().await
 }

@@ -1,4 +1,5 @@
 use crate::comms::hid::HidRequest;
+use crate::MAX_SCENARIO_LENGTH;
 use postcard::experimental::max_size::MaxSize;
 
 // All enums are repr(u8) to minimise size (default is isize = 4 bytes on the MCU)
@@ -18,24 +19,27 @@ pub enum ScenarioStep {
     Wait { ms: u16 } = 1,
 }
 
+#[derive(
+    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
+pub struct Scenario {
+    /// Index into the scenario vector (None if no measurement is needed)
+    pub start_recording_at_idx: Option<u8>,
+    pub steps: heapless::Vec<ScenarioStep, { MAX_SCENARIO_LENGTH }>,
+}
+
 #[repr(u8)]
 #[derive(
     Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
 )]
-pub enum HostToDevice {
+pub enum Message {
     // not 0 to make it less likely to trigger by accident
     ResetToFirmwareUpdate = 254,
     GetStatus = 0,
     // can be called repeatedly with overlapping durations, works as a keepalive
-    StreamLightLevel {
-        duration_ms: u16,
-    } = 1,
+    StreamLightLevel { duration_ms: u16 } = 1,
     SendHidReport(HidRequest) = 2,
-    ExecuteScenario {
-        /// Index into the scenario vector (None if no measurement is needed)
-        start_timing_at_idx: Option<u8>,
-        scenario: heapless::Vec<ScenarioStep, 16>,
-    } = 3,
+    ExecuteScenario(Scenario) = 3,
 }
 
 #[derive(
@@ -46,5 +50,5 @@ pub struct Envelope {
     /// Reused for streamed responses.
     pub request_id: RequestId,
     /// Request content
-    pub request: HostToDevice,
+    pub request: Message,
 }

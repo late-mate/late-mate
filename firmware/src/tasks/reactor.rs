@@ -10,8 +10,6 @@ use embassy_executor::Spawner;
 use embassy_rp::rom_data::reset_to_usb_boot;
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant, Timer};
-use late_mate_shared::comms::device_to_host::{DeviceToHost, MeasurementEvent, Version};
-use late_mate_shared::comms::host_to_device::{HostToDevice, RequestId, ScenarioStep};
 use late_mate_shared::comms::{device_to_host, host_to_device};
 
 #[embassy_executor::task]
@@ -29,24 +27,25 @@ async fn reactor_task(
         let mut should_reset_to_usb_boot = false;
 
         let response = match request {
-            HostToDevice::ResetToFirmwareUpdate => {
+            host_to_device::Message::ResetToFirmwareUpdate => {
                 should_reset_to_usb_boot = true;
                 Ok(None)
             }
 
-            HostToDevice::GetStatus => {
-                let status = DeviceToHost::Status {
-                    version: Version {
+            host_to_device::Message::GetStatus => {
+                let status = device_to_host::Status {
+                    version: device_to_host::Version {
                         hardware: HARDWARE_VERSION,
                         firmware: FIRMWARE_VERSION,
                     },
                     max_light_level: light_sensor::MAX_LIGHT_LEVEL,
                     serial_number: serial_number.bytes(),
                 };
-                Ok(Some(status))
+                let resp = device_to_host::Message::Status(status);
+                Ok(Some(resp))
             }
 
-            HostToDevice::StreamLightLevel { duration_ms } => {
+            host_to_device::Message::StreamLightLevel { duration_ms } => {
                 light_stream_loop::stream_for(
                     request_id,
                     Duration::from_millis(duration_ms as u64),
@@ -55,17 +54,19 @@ async fn reactor_task(
                 Ok(None)
             }
 
-            HostToDevice::SendHidReport(hid_request) => hid_sender::send(hid_request)
+            host_to_device::Message::SendHidReport(hid_request) => hid_sender::send(hid_request)
                 .await
                 // ignore the instant the HID report was sent
                 .map(|_| None),
 
-            HostToDevice::ExecuteScenario {
-                start_timing_at_idx,
-                scenario,
-            } => execute_scenario(request_id, buffer, start_timing_at_idx, scenario)
-                .await
-                .map(|_| None),
+            host_to_device::Message::ExecuteScenario(scenario) => execute_scenario(
+                request_id,
+                buffer,
+                scenario.start_recording_at_idx,
+                scenario.steps,
+            )
+            .await
+            .map(|_| None),
         };
 
         // todo: handle errors here?
@@ -92,10 +93,10 @@ async fn reactor_task(
 }
 
 async fn execute_scenario(
-    request_id: RequestId,
+    request_id: host_to_device::RequestId,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
-    start_timing_at_idx: Option<u8>,
-    scenario: heapless::Vec<ScenarioStep, 16>,
+    start_recording_at_idx: Option<u8>,
+    steps: heapless::Vec<host_to_device::ScenarioStep, 16>,
 ) -> Result<(), ()> {
     info!("Executing a scenario");
 
@@ -103,25 +104,25 @@ async fn execute_scenario(
 
     light_stream_loop::stop_streaming().await;
 
-    for (idx, step) in scenario.into_iter().enumerate() {
-        if start_timing_at_idx.is_some_and(|start_idx| idx == start_idx as usize) {
+    for (idx, step) in steps.into_iter().enumerate() {
+        if start_recording_at_idx.is_some_and(|start_idx| idx == start_idx as usize) {
             buffer.lock().await.clear(Instant::now());
             light_scenario_loop::start().await;
             timing_started = true;
         }
 
         match step {
-            ScenarioStep::Wait { ms } => {
+            host_to_device::ScenarioStep::Wait { ms } => {
                 Timer::after(Duration::from_millis(ms as u64)).await;
             }
-            ScenarioStep::HidRequest(hid_request) => {
+            host_to_device::ScenarioStep::HidRequest(hid_request) => {
                 let hid_request_id = hid_request.id;
                 if let Ok(instant) = hid_sender::send(hid_request).await {
                     if timing_started {
                         let push_result = buffer
                             .lock()
                             .await
-                            .store(instant, MeasurementEvent::HidReport(hid_request_id));
+                            .store(instant, device_to_host::Event::HidReport(hid_request_id));
                         if push_result.is_err() {
                             error!("Buffer push failed, stopping the scenario early");
                             light_scenario_loop::stop().await;
@@ -137,14 +138,16 @@ async fn execute_scenario(
     light_scenario_loop::stop().await;
 
     let guard = buffer.lock().await;
-    let total = guard.measurements.len() as u16;
-    for (idx, measurement) in guard.measurements.iter().enumerate() {
+    let total = guard.data.len() as u16;
+    for (idx, moment) in guard.data.iter().enumerate() {
         if let Ok(idx) = u16::try_from(idx) {
-            let resp = DeviceToHost::BufferedMeasurement {
-                measurement: *measurement,
+            let moment = device_to_host::BufferedMoment {
+                microsecond: moment.microsecond,
+                event: moment.event,
                 idx,
                 total,
             };
+            let resp = device_to_host::Message::BufferedMoment(moment);
             bulk_comms::write_to_host(device_to_host::Envelope {
                 request_id,
                 response: Ok(Some(resp)),

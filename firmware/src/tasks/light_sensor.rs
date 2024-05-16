@@ -13,7 +13,7 @@ use embassy_rp::spi::{Async, Phase, Polarity, Spi};
 use embassy_sync::pubsub;
 use embassy_sync::pubsub::PubSubChannel;
 use embassy_time::{Duration, Instant, Timer};
-use late_mate_shared::comms::device_to_host::MeasurementEvent;
+use late_mate_shared::comms::device_to_host;
 
 const N_BUFFERED: usize = 1;
 // reactor x2 (in measurements and in background monitoring) and LED x1
@@ -38,7 +38,7 @@ pub struct LightReading {
     pub reading: u32,
 }
 
-impl From<LightReading> for MeasurementEvent {
+impl From<LightReading> for device_to_host::Event {
     fn from(reading: LightReading) -> Self {
         Self::LightLevel(reading.reading)
     }

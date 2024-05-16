@@ -2,6 +2,8 @@
 
 pub mod comms;
 
+pub use heapless;
+
 /// VID/PID pair is allocated for Late Mate
 /// see https://github.com/raspberrypi/usb-pid
 pub const USB_VID: u16 = 0x2E8A;
@@ -14,3 +16,5 @@ pub const USB_PID: u16 = 0x108B;
 /// 2khz = 2000 * 9 ~ 18kb of internal buffer for 1 second of data (~100kb per 5sec),
 /// which should fit no problem (RPi has 264kb of RAM)
 pub const MAX_SCENARIO_DURATION_MS: u64 = 5000;
+
+pub const MAX_SCENARIO_LENGTH: usize = 16;

@@ -40,11 +40,20 @@ pub struct Version {
     pub firmware: FirmwareVersion,
 }
 
+#[derive(
+    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
+)]
+pub struct Status {
+    pub version: Version,
+    pub max_light_level: u32,
+    pub serial_number: [u8; 8],
+}
+
 #[repr(u8)]
 #[derive(
     Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
 )]
-pub enum MeasurementEvent {
+pub enum Event {
     LightLevel(u32) = 0,
     HidReport(HidRequestId) = 1,
 }
@@ -52,30 +61,25 @@ pub enum MeasurementEvent {
 #[derive(
     Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
 )]
-pub struct Measurement {
+pub struct BufferedMoment {
     pub microsecond: u32,
-    pub event: MeasurementEvent,
+    pub event: Event,
+    pub idx: u16,
+    pub total: u16,
 }
 
 #[repr(u8)]
 #[derive(
     Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
 )]
-pub enum DeviceToHost {
+pub enum Message {
     /// GetStatus response
-    Status {
-        version: Version,
-        max_light_level: u32,
-        serial_number: [u8; 8],
-    } = 0,
+    Status(Status) = 0,
     /// Streamed on request (except when measurements are taken)
     CurrentLightLevel(u32) = 1,
-    /// Streamed from an internal buffer after scenario is complete
-    BufferedMeasurement {
-        measurement: Measurement,
-        idx: u16,
-        total: u16,
-    } = 3,
+    /// Streamed from an internal buffer after scenario is complete if
+    /// start_timing_at_idx was not None
+    BufferedMoment(BufferedMoment) = 3,
 }
 
 #[derive(
@@ -87,5 +91,5 @@ pub struct Envelope {
     pub request_id: RequestId,
     /// Response content. There is no good error representation that can be easily transmitted
     /// from the MCU, so the error type is just ()
-    pub response: Result<Option<DeviceToHost>, ()>,
+    pub response: Result<Option<Message>, ()>,
 }

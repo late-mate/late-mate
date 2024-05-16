@@ -1,3 +1,5 @@
+use late_mate_shared::comms;
+
 /// This is a neater/more convenient version of HID stuff from late-mate-shared
 
 #[non_exhaustive]
@@ -187,15 +189,11 @@ pub enum HidReport {
     Keyboard(KeyboardReport),
 }
 
-impl From<&HidReport> for late_mate_shared::comms::hid::HidReport {
+impl From<&HidReport> for comms::hid::HidReport {
     fn from(value: &HidReport) -> Self {
         match value {
-            HidReport::Mouse(report) => {
-                late_mate_shared::comms::hid::HidReport::Mouse(report.into())
-            }
-            HidReport::Keyboard(report) => {
-                late_mate_shared::comms::hid::HidReport::Keyboard(report.into())
-            }
+            HidReport::Mouse(report) => comms::hid::HidReport::Mouse(report.into()),
+            HidReport::Keyboard(report) => comms::hid::HidReport::Keyboard(report.into()),
         }
     }
 }

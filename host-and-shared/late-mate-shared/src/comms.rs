@@ -180,14 +180,14 @@ pub fn encode<T: serde::Serialize + MaxSize>(msg: &T, result_buffer: &mut [u8]) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::comms::device_to_host::{DeviceToHost, Measurement, MeasurementEvent};
+    use crate::comms::device_to_host::{BufferedMoment, Event, Message};
 
     #[test]
     fn test_basic_roundtrip() {
-        let packet = DeviceToHost::BufferedMeasurement {
-            measurement: Measurement {
+        let packet = Message::BufferedMeasurement {
+            measurement: BufferedMoment {
                 microsecond: 17,
-                event: MeasurementEvent::LightLevel(42),
+                event: Event::LightLevel(42),
             },
             idx: 5,
             total: 10,
@@ -196,7 +196,7 @@ mod tests {
         let cobs_len = encode(&packet, buffer);
 
         let mut accumulator = CrcCobsAccumulator::new();
-        let result = accumulator.feed::<DeviceToHost>(&buffer[..cobs_len]);
+        let result = accumulator.feed::<Message>(&buffer[..cobs_len]);
         match result {
             FeedResult::Success { data, remaining } => {
                 assert_eq!(packet, data);

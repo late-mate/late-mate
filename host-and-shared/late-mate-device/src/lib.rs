@@ -1,17 +1,24 @@
 use crate::agents::dispatcher::DispatcherHandle;
 use crate::agents::usb_tx::UsbTxHandle;
 use crate::agents::{agent_watcher, dispatcher, usb_rx, usb_tx};
+use crate::scenario::{to_device_scenario, Moment, Recording, Scenario};
 use crate::usb::UsbDevice;
-use late_mate_shared::comms::device_to_host::DeviceToHost;
-use late_mate_shared::comms::hid::HidRequest;
-use late_mate_shared::comms::host_to_device::HostToDevice;
+use late_mate_shared::comms;
+use late_mate_shared::comms::device_to_host;
+use late_mate_shared::comms::host_to_device;
 use late_mate_shared::MAX_SCENARIO_DURATION_MS;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::time::Duration;
+use tokio::sync::mpsc;
 use tokio::task::JoinSet;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
+use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::Stream;
 
 mod agents;
 pub mod hid;
+mod scenario;
 mod usb;
 
 #[derive(Debug, thiserror::Error)]
@@ -28,7 +35,7 @@ pub enum Error {
     Timeout,
 }
 
-type ResponseResult = Result<Option<DeviceToHost>, Error>;
+type ResponseResult = Result<Option<device_to_host::Message>, Error>;
 
 #[derive(Debug, Clone)]
 pub struct Status {
@@ -38,31 +45,22 @@ pub struct Status {
     pub max_light_level: u32,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum StatusConversionError {
-    #[error("Expected a Status message")]
-    NotStatus,
-}
-
-impl TryFrom<DeviceToHost> for Status {
-    type Error = StatusConversionError;
-
-    fn try_from(value: DeviceToHost) -> Result<Self, Self::Error> {
-        match value {
-            DeviceToHost::Status {
-                version,
-                max_light_level,
-                serial_number,
-            } => Ok(Self {
-                hardware_version: version.hardware.to_string(),
-                firmware_version: version.firmware.to_string(),
-                serial_number: serial_number
-                    .into_iter()
-                    .map(|b| format!("{:02X}", b).to_string())
-                    .collect(),
-                max_light_level,
-            }),
-            _ => Err(Self::Error::NotStatus),
+impl From<device_to_host::Status> for Status {
+    fn from(
+        device_to_host::Status {
+            version,
+            max_light_level,
+            serial_number,
+        }: device_to_host::Status,
+    ) -> Self {
+        Self {
+            hardware_version: version.hardware.to_string(),
+            firmware_version: version.firmware.to_string(),
+            serial_number: serial_number
+                .into_iter()
+                .map(|b| format!("{:02X}", b).to_string())
+                .collect(),
+            max_light_level,
         }
     }
 }
@@ -153,34 +151,48 @@ impl Device {
         Ok(self_)
     }
 
-    async fn one_off(&self, request: HostToDevice) -> ResponseResult {
-        let (mut receiver, envelope) = self.dispatcher.register_request(request).await;
+    async fn make_request(
+        &self,
+        request: host_to_device::Message,
+    ) -> mpsc::Receiver<ResponseResult> {
+        let (receiver, envelope) = self.dispatcher.register_request(request).await;
 
         self.usb_tx
             .send(envelope)
             .await
             .expect("Device should be ready");
 
+        receiver
+    }
+
+    async fn one_off(&self, request: host_to_device::Message) -> ResponseResult {
+        let mut response_stream = self.make_request(request).await;
+
         timeout(
             Duration::from_millis(MAX_SCENARIO_DURATION_MS + 1000),
-            receiver.recv(),
+            response_stream.recv(),
         )
         .await
         .map_err(|_| Error::Timeout)?
-        .expect("Pending responses should not be dropped")
+        .expect("Pending response channel should not be dropped")
     }
 
     pub async fn get_status(&self) -> Result<Status, Error> {
         let response = self
-            .one_off(HostToDevice::GetStatus)
+            .one_off(host_to_device::Message::GetStatus)
             .await?
             .expect("Status response should be present");
 
-        Ok(Status::try_from(response).expect("Status response should be of correct type"))
+        match response {
+            device_to_host::Message::Status(s) => Ok(s.into()),
+            _ => unreachable!("Status response should be of correct type"),
+        }
     }
 
     pub async fn reset_to_firmware_update(&self) -> Result<(), Error> {
-        let response = self.one_off(HostToDevice::ResetToFirmwareUpdate).await?;
+        let response = self
+            .one_off(host_to_device::Message::ResetToFirmwareUpdate)
+            .await?;
         assert!(
             response.is_none(),
             "ResetToFirmwareUpdate shouldn't receive a response"
@@ -190,20 +202,109 @@ impl Device {
     }
 
     pub async fn send_hid_report(&self, report: &hid::HidReport) -> Result<(), Error> {
-        let hid_request = HidRequest {
+        let hid_request = comms::hid::HidRequest {
             id: 0,
             report: report.into(),
         };
 
         let response = self
-            .one_off(HostToDevice::SendHidReport(hid_request))
+            .one_off(host_to_device::Message::SendHidReport(hid_request))
             .await?;
         assert!(response.is_none(), "HidReport shouldn't receive a response");
 
         Ok(())
     }
 
-    // todo: random delay whilst running measurements
+    async fn assemble_timeline(
+        mut receiver: mpsc::Receiver<ResponseResult>,
+        hid_index: &[hid::HidReport],
+    ) -> Result<Vec<Moment>, Error> {
+        let mut timeline = Vec::new();
+        let mut reported_total = 0;
+
+        loop {
+            let message = receiver
+                .recv()
+                .await
+                .expect("Pending response channel should not be dropped")?;
+            match message {
+                Some(device_to_host::Message::BufferedMoment(buffered_moment)) => {
+                    assert_eq!(
+                        buffered_moment.idx as usize,
+                        timeline.len(),
+                        "Scenario results must arrive in order"
+                    );
+                    timeline.push(Moment::from_device(buffered_moment, hid_index));
+                    reported_total = buffered_moment.total as usize;
+                }
+                Some(_) => unreachable!("Scenario results must not interleave with other messages"),
+                None => break,
+            }
+        }
+        assert_eq!(
+            timeline.len(),
+            reported_total,
+            "Must receive all scenario results"
+        );
+
+        Ok(timeline)
+    }
+
+    pub async fn run_scenario(
+        &self,
+        scenario: Scenario,
+    ) -> Result<impl Stream<Item = Result<Recording, Error>> + '_, scenario::ValidationError> {
+        scenario.validate()?;
+
+        let (test_device_scenario, test_hid_index) = to_device_scenario(scenario.test.as_slice());
+        let revert = scenario.revert.as_deref().map(to_device_scenario);
+        let delay_range = scenario.delay_between_ms.0..=scenario.delay_between_ms.1;
+
+        let (sender, receiver) = mpsc::channel::<Result<Recording, Error>>(1);
+
+        let device = self.clone();
+
+        tokio::spawn(async move {
+            let mut unsafe_rng = SmallRng::from_entropy();
+
+            for _repeat in 0..scenario.repeats {
+                let request =
+                    host_to_device::Message::ExecuteScenario(test_device_scenario.clone());
+                let resp_receiver = device.make_request(request).await;
+                let recording_result = Device::assemble_timeline(resp_receiver, &test_hid_index)
+                    .await
+                    .map(|timeline| Recording {
+                        max_light_level: device.max_light_level,
+                        timeline,
+                    });
+                // this is needed to only break AFTER sending the error
+                let recording_err = recording_result.is_err();
+                // the receiver went away
+                let submit_err = sender.send(recording_result).await.is_err();
+                if recording_err || submit_err {
+                    break;
+                }
+
+                if let Some((ref device_scenario, _)) = revert {
+                    let request = host_to_device::Message::ExecuteScenario(device_scenario.clone());
+                    match device.one_off(request).await {
+                        Ok(None) => (),
+                        Ok(Some(_)) => unreachable!("Revert scenario should not return anything"),
+                        Err(e) => {
+                            // I break anyway, doesn't matter if the receiver went away
+                            _ = sender.send(Err(e)).await;
+                            break;
+                        }
+                    }
+                }
+
+                let sleep_ms = unsafe_rng.gen_range(delay_range.clone());
+                sleep(Duration::from_millis(sleep_ms)).await;
+            }
+        });
+
+        Ok(ReceiverStream::new(receiver))
+    }
 
     //
     // // todo: detect drop or stop subscribing in some way?
@@ -226,94 +327,4 @@ impl Device {
     //         .send(false)
     //         .expect("is_active channel must be opened here");
     // }
-    //
-    // pub async fn measure(
-    //     &mut self,
-    //     duration_ms: u16,
-    //     start: &nice_hid::HidReport,
-    //     followup: Option<(u16, nice_hid::HidReport)>,
-    // ) -> anyhow::Result<Vec<Measurement>> {
-    //     assert!(duration_ms < 1000);
-    //     let command = HostToDevice::Measure {
-    //         duration_ms,
-    //         start: HidRequest {
-    //             id: self.new_hid_request_id(),
-    //             report: start.into(),
-    //         },
-    //         followup: followup.map(|(after_ms, report)| MeasureFollowup {
-    //             after_ms,
-    //             hid_request: HidRequest {
-    //                 id: self.new_hid_request_id(),
-    //                 report: (&report).into(),
-    //             },
-    //         }),
-    //     };
-    //
-    //     let req_future = async {
-    //         self.tx_sender
-    //             .send(command)
-    //             .await
-    //             .context("Device TX channel was unexpectedly closed")
-    //     };
-    //
-    //     let mut rx_receiver = self.rx_sender.subscribe();
-    //     let resp_future = async {
-    //         let mut maybe_total: Option<u16> = None;
-    //         let mut next_idx = 0;
-    //         let mut measurements: Vec<Measurement> = Vec::new();
-    //
-    //         loop {
-    //             match rx_receiver.recv().await {
-    //                 Ok(DeviceToHost::BufferedMeasurement {
-    //                     measurement,
-    //                     idx,
-    //                     total,
-    //                 }) => {
-    //                     assert_eq!(idx, next_idx, "Unexpected buffered measurement idx");
-    //                     assert!(idx < total, "Unexpected buffered measurement idx larger than total, {idx} > {total}");
-    //                     match maybe_total {
-    //                         None => {
-    //                             maybe_total = Some(total);
-    //                             measurements.reserve(total as usize);
-    //                         }
-    //                         Some(known_total) => {
-    //                             assert_eq!(
-    //                                 known_total, total,
-    //                                 "Unexpected change of total number of measurements"
-    //                             );
-    //                         }
-    //                     }
-    //                     measurements.push(measurement);
-    //                     next_idx += 1;
-    //                     if idx == total - 1 {
-    //                         return Ok(measurements);
-    //                     }
-    //                 }
-    //                 Ok(_) => continue,
-    //                 Err(RecvError::Lagged(_)) => {
-    //                     // todo: this is a problem, the results are missed here
-    //                     println!("lagged");
-    //                     continue;
-    //                 }
-    //                 Err(RecvError::Closed) => {
-    //                     return Err(anyhow!("Device RX channel was unexpectedly closed"))
-    //                 }
-    //             }
-    //         }
-    //     };
-    //
-    //     match tokio::try_join!(
-    //         req_future,
-    //         flat_timeout(
-    //             Duration::from_millis(duration_ms as u64 * 2),
-    //             anyhow!("Timeout while waiting for measurements"),
-    //             resp_future
-    //         )
-    //     ) {
-    //         Ok((_, measurements)) => Ok(measurements),
-    //         // have to rewrap to change the type ('Ok' branches are different)
-    //         Err(e) => Err(e),
-    //     }
-    // }
-    //
 }

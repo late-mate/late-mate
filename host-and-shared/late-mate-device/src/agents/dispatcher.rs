@@ -1,6 +1,5 @@
 use crate::agents::usb_rx::UsbRxHandle;
 use crate::{Error, ResponseResult};
-use late_mate_shared::comms::host_to_device::{HostToDevice, RequestId};
 use late_mate_shared::comms::{device_to_host, host_to_device};
 use std::collections::BTreeMap;
 use std::mem;
@@ -12,19 +11,19 @@ use tokio::time::MissedTickBehavior;
 
 #[derive(Debug, Default)]
 struct State {
-    next_request_id: RequestId,
-    pending: BTreeMap<RequestId, mpsc::Sender<ResponseResult>>,
+    next_request_id: host_to_device::RequestId,
+    pending: BTreeMap<host_to_device::RequestId, mpsc::Sender<ResponseResult>>,
 }
 
 enum Command {
     RegisterRequest {
-        request: HostToDevice,
+        request: host_to_device::Message,
         reply_to: oneshot::Sender<(mpsc::Receiver<ResponseResult>, host_to_device::Envelope)>,
     },
 }
 
 impl State {
-    fn new_request_id(&mut self) -> RequestId {
+    fn new_request_id(&mut self) -> host_to_device::RequestId {
         let next_request_id = self.next_request_id.wrapping_add(1);
         mem::replace(&mut self.next_request_id, next_request_id)
     }
@@ -81,21 +80,25 @@ async fn dispatcher_loop(
         tokio::select! {
             usb_rx = rx.recv() => match usb_rx {
                 Some(envelope) => state.handle_usb_rx(envelope).await,
-                None => break,
+                None => {
+                    tracing::info!("USB RX loop is dropped, dispatcher exiting");
+                    // Let the pending requests know we're down
+                    let pending = mem::take(&mut state.pending);
+                    for sender in pending.values() {
+                        let _ = sender.send(Err(Error::Disconnected)).await;
+                    }
+                    break
+                },
             },
             command = command_receiver.recv() => match command {
                 Some(command) => state.handle_command(command),
-                None => break,
+                None => {
+                    tracing::info!("Command channel is dropped, dispatcher exiting");
+                    break
+                },
             },
             _ = reaping_interval.tick() => state.reap()
         }
-    }
-
-    // USB must be closed, let the pending requests know & exit
-    // todo: maybe log this?
-    let pending = mem::take(&mut state.pending);
-    for sender in pending.values() {
-        let _ = sender.send(Err(Error::Disconnected)).await;
     }
 }
 
@@ -107,7 +110,7 @@ pub struct DispatcherHandle {
 impl DispatcherHandle {
     pub async fn register_request(
         &self,
-        request: HostToDevice,
+        request: host_to_device::Message,
     ) -> (mpsc::Receiver<ResponseResult>, host_to_device::Envelope) {
         let (reply_to, reply_to_receiver) = oneshot::channel();
         let command = Command::RegisterRequest { request, reply_to };
