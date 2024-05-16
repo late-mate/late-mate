@@ -15,7 +15,7 @@ use std::fmt::{Display, Formatter};
     Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
 )]
 pub struct FirmwareVersion {
-    pub git_commit: [u8; 5], // 10 hex symbols
+    pub git_commit: [u8; 4], // 8 hex symbols
     pub is_dirty: bool,
 }
 
