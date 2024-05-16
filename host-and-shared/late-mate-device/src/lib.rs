@@ -145,8 +145,14 @@ impl Device {
             max_light_level: 0,
         };
 
-        let device_status = self_.get_status().await?;
-        self_.max_light_level = device_status.max_light_level;
+        // todo: remove this match after Dan Luu updates his device; I only need this because
+        //       I shortened the version string, so the driver hangs while trying to initialise
+        let max_light_level = match self_.get_status().await {
+            Err(Error::Timeout) => 0,
+            Err(e) => return Err(e),
+            Ok(status) => status.max_light_level,
+        };
+        self_.max_light_level = max_light_level;
 
         Ok(self_)
     }
