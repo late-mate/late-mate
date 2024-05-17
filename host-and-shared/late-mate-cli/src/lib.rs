@@ -1,8 +1,14 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::{command, Parser, Subcommand};
+use futures::StreamExt;
 use late_mate_device::hid::HidReport;
+use late_mate_device::scenario::Scenario;
 use late_mate_device::Device;
+use std::io::BufReader;
 use std::net::IpAddr;
+use std::path::PathBuf;
+use std::pin::Pin;
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -29,23 +35,18 @@ enum Command {
         #[arg(value_parser(parse_hid_report))]
         reports: Vec<HidReport>,
     },
-    /// Run a single latency measurement
-    Measure {
-        #[arg(long, default_value = "300")]
-        duration: u64,
-        #[arg(long, value_parser(parse_hid_report))]
-        start: HidReport,
-        #[arg(long, requires = "followup")]
-        followup_after: Option<u16>,
-        #[arg(long, value_parser(parse_hid_report), requires = "followup_after")]
-        followup: Option<HidReport>,
+    /// Execute a testing scenario
+    RunScenario {
+        /// Path to a json file with the scenario. If not provided, the file will be expected
+        /// on STDIN.
+        file: Option<PathBuf>,
     },
     /// Request device reset to firmware update mode
     ResetToFirmwareUpdate,
 }
 
 fn parse_hid_report(s: &str) -> Result<HidReport, anyhow::Error> {
-    serde_json::from_str(s).map_err(|e| anyhow!("Invalid JSON: {}", e))
+    serde_json::from_str(s).map_err(|e| anyhow!("Invalid HID JSON: {}", e))
 }
 
 async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
@@ -69,6 +70,33 @@ async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
                 device.send_hid_report(&report).await?;
             }
             eprintln!("Done!");
+        }
+        Command::RunScenario { file } => {
+            let scenario_str = {
+                let mut reader: Pin<Box<dyn AsyncRead>> = match file {
+                    Some(path) => Box::pin(
+                        tokio::fs::File::open(path)
+                            .await
+                            .context("Error while opening the scenario file")?,
+                    ),
+                    None => Box::pin(tokio::io::stdin()),
+                };
+                let mut result = String::new();
+                reader
+                    .read_to_string(&mut result)
+                    .await
+                    .context("Error while reading the scenario")?;
+                result
+            };
+
+            let scenario = serde_json::from_str::<Scenario>(&scenario_str)?;
+            let mut stream = device
+                .run_scenario(scenario)
+                .await
+                .context("Scenario validation error")?;
+            while let Some(x) = stream.next().await {
+                println!("New testing result:\n{x:?}");
+            }
         }
         _ => println!("todo"),
         // Command::Measure {

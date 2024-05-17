@@ -1,4 +1,4 @@
-mod light_scenario_loop;
+mod light_recorder_loop;
 mod light_stream_loop;
 
 use crate::serial_number::SerialNumber;
@@ -100,15 +100,15 @@ async fn execute_scenario(
 ) -> Result<(), ()> {
     info!("Executing a scenario");
 
-    let mut timing_started = false;
+    let mut recording_started = false;
 
     light_stream_loop::stop_streaming().await;
 
     for (idx, step) in steps.into_iter().enumerate() {
         if start_recording_at_idx.is_some_and(|start_idx| idx == start_idx as usize) {
             buffer.lock().await.clear(Instant::now());
-            light_scenario_loop::start().await;
-            timing_started = true;
+            light_recorder_loop::start().await;
+            recording_started = true;
         }
 
         match step {
@@ -118,14 +118,14 @@ async fn execute_scenario(
             host_to_device::ScenarioStep::HidRequest(hid_request) => {
                 let hid_request_id = hid_request.id;
                 if let Ok(instant) = hid_sender::send(hid_request).await {
-                    if timing_started {
+                    if recording_started {
                         let push_result = buffer
                             .lock()
                             .await
                             .store(instant, device_to_host::Event::HidReport(hid_request_id));
                         if push_result.is_err() {
                             error!("Buffer push failed, stopping the scenario early");
-                            light_scenario_loop::stop().await;
+                            light_recorder_loop::stop().await;
                             return Err(());
                         }
                     }
@@ -135,30 +135,31 @@ async fn execute_scenario(
     }
 
     // stop() is idempotent, so I can just call it regardless
-    light_scenario_loop::stop().await;
+    light_recorder_loop::stop().await;
 
-    let guard = buffer.lock().await;
-    let total = guard.data.len() as u16;
-    for (idx, moment) in guard.data.iter().enumerate() {
-        if let Ok(idx) = u16::try_from(idx) {
-            let moment = device_to_host::BufferedMoment {
-                microsecond: moment.microsecond,
-                event: moment.event,
-                idx,
-                total,
-            };
-            let resp = device_to_host::Message::BufferedMoment(moment);
-            bulk_comms::write_to_host(device_to_host::Envelope {
-                request_id,
-                response: Ok(Some(resp)),
-            })
-            .await;
-        } else {
-            error!("The buffer should be smaller than 65_535");
-            return Err(());
+    if recording_started {
+        let guard = buffer.lock().await;
+        let total = guard.data.len() as u16;
+        for (idx, moment) in guard.data.iter().enumerate() {
+            if let Ok(idx) = u16::try_from(idx) {
+                let moment = device_to_host::BufferedMoment {
+                    microsecond: moment.microsecond,
+                    event: moment.event,
+                    idx,
+                    total,
+                };
+                let resp = device_to_host::Message::BufferedMoment(moment);
+                bulk_comms::write_to_host(device_to_host::Envelope {
+                    request_id,
+                    response: Ok(Some(resp)),
+                })
+                .await;
+            } else {
+                error!("The buffer should be smaller than 65_535");
+                return Err(());
+            }
         }
     }
-    drop(guard);
 
     Ok(())
 }
@@ -166,13 +167,13 @@ async fn execute_scenario(
 pub fn init(
     spawner: &Spawner,
     light_stream_sub: light_sensor::Subscriber,
-    light_scenario_sub: light_sensor::Subscriber,
+    light_recorder_sub: light_sensor::Subscriber,
     serial_number: &'static SerialNumber,
 ) {
     let buffer = scenario_buffer::init();
 
     light_stream_loop::init(spawner, light_stream_sub);
-    light_scenario_loop::init(spawner, light_scenario_sub, buffer);
+    light_recorder_loop::init(spawner, light_recorder_sub, buffer);
 
     spawner.must_spawn(reactor_task(buffer, serial_number));
 }

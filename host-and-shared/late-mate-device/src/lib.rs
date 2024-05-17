@@ -18,7 +18,7 @@ use tokio_stream::Stream;
 
 mod agents;
 pub mod hid;
-mod scenario;
+pub mod scenario;
 mod usb;
 
 #[derive(Debug, thiserror::Error)]
@@ -305,7 +305,7 @@ impl Device {
                 }
 
                 let sleep_ms = unsafe_rng.gen_range(delay_range.clone());
-                sleep(Duration::from_millis(sleep_ms)).await;
+                sleep(Duration::from_millis(sleep_ms as u64)).await;
             }
         });
 

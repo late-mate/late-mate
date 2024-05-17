@@ -26,9 +26,12 @@ pub enum ValidationError {
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ScenarioStep {
-    Wait { ms: u16 },
-    HidReport(hid::HidReport),
+    Wait {
+        ms: u16,
+    },
     StartTiming,
+    #[serde(untagged)]
+    HidReport(hid::HidReport),
 }
 
 impl From<&ScenarioStep> for Duration {
@@ -48,8 +51,8 @@ impl From<&ScenarioStep> for Duration {
 pub struct Scenario {
     pub test: Vec<ScenarioStep>,
     pub revert: Option<Vec<ScenarioStep>>,
-    pub repeats: u64,
-    pub delay_between_ms: (u64, u64),
+    pub repeats: u16,
+    pub delay_between_ms: (u32, u32),
 }
 
 impl Scenario {
@@ -67,8 +70,8 @@ impl Scenario {
         let base = (revert_duration + self.test_duration()) * repeats;
 
         (
-            base + Duration::from_millis(self.delay_between_ms.0) * repeats,
-            base + Duration::from_millis(self.delay_between_ms.1) * repeats,
+            base + Duration::from_millis(self.delay_between_ms.0 as u64) * repeats,
+            base + Duration::from_millis(self.delay_between_ms.1 as u64) * repeats,
         )
     }
 
@@ -125,7 +128,7 @@ impl Default for Scenario {
             test: vec![],
             revert: None,
             repeats: 50,
-            delay_between_ms: (100, 1000),
+            delay_between_ms: (300, 500),
         }
     }
 }
@@ -180,6 +183,7 @@ pub fn to_device_scenario(
 
 // note that it's different from shared comms stuff becauase it has the actual report,
 // not just the ID
+#[derive(Debug)]
 pub enum Event {
     LightLevel(u32),
     HidReport(hid::HidReport),
@@ -196,6 +200,7 @@ impl Event {
     }
 }
 
+#[derive(Debug)]
 pub struct Moment {
     pub microsecond: u32,
     pub event: Event,
@@ -213,6 +218,7 @@ impl Moment {
     }
 }
 
+#[derive(Debug)]
 pub struct Recording {
     pub max_light_level: u32,
     pub timeline: Vec<Moment>,

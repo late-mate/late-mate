@@ -1,0 +1,22 @@
+{
+  "test": [
+    {
+      "type": "start_timing"
+    },
+    {
+      "type": "mouse",
+      "x": 30
+    },
+    {
+      "type": "wait",
+      "ms": 1000
+    }
+  ],
+  "revert": [
+    {
+      "type": "mouse",
+      "x": -30
+    }
+  ],
+  "repeats": 1
+}

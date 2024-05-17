@@ -9,8 +9,8 @@ use embassy_time::{with_timeout, TimeoutError};
 static SHOULD_RUN: Channel<MutexKind, bool, 1> = Channel::new();
 
 #[embassy_executor::task]
-async fn light_scenario_loop_task(
-    mut light_scenario_sub: light_sensor::Subscriber,
+async fn light_recorder_loop_task(
+    mut light_recorder_sub: light_sensor::Subscriber,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
 ) {
     info!("Starting the light scenario loop");
@@ -25,7 +25,7 @@ async fn light_scenario_loop_task(
         'inner: while is_active {
             match with_timeout(
                 light_sensor::TIMEOUT,
-                light_scenario_sub.next_message_pure(),
+                light_recorder_sub.next_message_pure(),
             )
             .await
             {
@@ -64,8 +64,8 @@ pub async fn stop() {
 
 pub fn init(
     spawner: &Spawner,
-    light_scenario_sub: light_sensor::Subscriber,
+    light_recorder_sub: light_sensor::Subscriber,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
 ) {
-    spawner.must_spawn(light_scenario_loop_task(light_scenario_sub, buffer));
+    spawner.must_spawn(light_recorder_loop_task(light_recorder_sub, buffer));
 }

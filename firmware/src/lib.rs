@@ -55,7 +55,7 @@ pub async fn main(spawner: Spawner) {
     let miso = p.PIN_16;
     let drdy = p.PIN_22;
 
-    let (light_stream_sub, light_scenario_sub, light_led_sub) = light_sensor::init(
+    let (light_stream_sub, light_recorder_sub, light_led_sub) = light_sensor::init(
         &spawner, p.SPI0, clk, mosi, miso, p.DMA_CH0, p.DMA_CH1, drdy,
     );
 
@@ -66,7 +66,7 @@ pub async fn main(spawner: Spawner) {
     reactor::init(
         &spawner,
         light_stream_sub,
-        light_scenario_sub,
+        light_recorder_sub,
         serial_number,
     );
 
