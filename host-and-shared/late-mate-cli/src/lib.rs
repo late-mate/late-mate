@@ -1,144 +1,15 @@
-use anyhow::{anyhow, Context};
-use clap::{command, Parser, Subcommand};
-use futures::StreamExt;
-use late_mate_device::hid::HidReport;
-use late_mate_device::scenario::Scenario;
+mod cli;
+
+use anyhow::Context;
 use late_mate_device::Device;
-use std::io::BufReader;
-use std::net::IpAddr;
-use std::path::PathBuf;
-use std::pin::Pin;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    /// Request status from the Late Mate device
-    Status,
-    /// Stream current light level to console output (throttled down to 120hz)
-    MonitorBackground,
-    /// Run an http/websocket server
-    RunServer {
-        #[arg(long, default_value = "127.0.0.1")]
-        interface: IpAddr,
-        #[arg(long, default_value = "9118")]
-        port: u16,
-    },
-    /// Send HID reports to the device. Accepts a list of JSON-encoded HID report structures
-    SendHidReports {
-        #[arg(value_parser(parse_hid_report))]
-        reports: Vec<HidReport>,
-    },
-    /// Execute a testing scenario
-    RunScenario {
-        /// Path to a json file with the scenario. If not provided, the file will be expected
-        /// on STDIN.
-        file: Option<PathBuf>,
-    },
-    /// Request device reset to firmware update mode
-    ResetToFirmwareUpdate,
-}
-
-fn parse_hid_report(s: &str) -> Result<HidReport, anyhow::Error> {
-    serde_json::from_str(s).map_err(|e| anyhow!("Invalid HID JSON: {}", e))
-}
-
-async fn run_command(device: Device, command: Command) -> anyhow::Result<()> {
-    match command {
-        // Command::MonitorBackground => monitor_background(device).await?,
-        Command::Status => {
-            let status = device.get_status().await?;
-            println!("Connection: success");
-            println!("Serial number: {}", status.serial_number);
-            println!("Version:");
-            println!("  Hardware: {}", status.hardware_version);
-            println!("  Firmware: {}", status.firmware_version);
-        }
-        Command::ResetToFirmwareUpdate => {
-            device.reset_to_firmware_update().await?;
-            println!("Firmware update started");
-            println!("Late Mate should mount as a mass storage device");
-        }
-        Command::SendHidReports { reports } => {
-            for report in reports {
-                device.send_hid_report(&report).await?;
-            }
-            eprintln!("Done!");
-        }
-        Command::RunScenario { file } => {
-            let scenario_str = {
-                let mut reader: Pin<Box<dyn AsyncRead>> = match file {
-                    Some(path) => Box::pin(
-                        tokio::fs::File::open(path)
-                            .await
-                            .context("Error while opening the scenario file")?,
-                    ),
-                    None => Box::pin(tokio::io::stdin()),
-                };
-                let mut result = String::new();
-                reader
-                    .read_to_string(&mut result)
-                    .await
-                    .context("Error while reading the scenario")?;
-                result
-            };
-
-            let scenario = serde_json::from_str::<Scenario>(&scenario_str)?;
-            let mut stream = device
-                .run_scenario(scenario)
-                .await
-                .context("Scenario validation error")?;
-            while let Some(x) = stream.next().await {
-                println!("New testing result:\n{x:?}");
-            }
-        }
-        _ => println!("todo"),
-        // Command::Measure {
-        //     duration,
-        //     start,
-        //     followup_after,
-        //     followup,
-        // } => {
-        //     if duration > MAX_SCENARIO_DURATION_MS {
-        //         return Err(anyhow!(
-        //             "Maximum scenario duration is {}ms",
-        //             MAX_SCENARIO_DURATION_MS
-        //         ));
-        //     }
-        //     let measurements = device
-        //         .measure(
-        //             duration as u16,
-        //             &start,
-        //             followup.map(|f| (followup_after.unwrap(), f)),
-        //         )
-        //         .await?;
-        //     for m in measurements {
-        //         println!("{m:?}");
-        //     }
-        // }
-        // Command::RunServer { interface, port } => {
-        //     server::run(device, interface, port).await?;
-        // }
-        // Command::ResetToFirmwareUpdate => {
-        //     device.reset_to_firmware_update().await?;
-        // }
-    };
-
-    Ok(())
-}
-
 pub async fn run() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let parsed_cli: cli::Cli = clap::Parser::parse();
 
     let device = Device::init().await?;
 
-    run_command(device, cli.command).await
+    parsed_cli.command.run(&device).await
 }
 
 // pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
