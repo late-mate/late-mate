@@ -253,6 +253,8 @@ impl Device {
             "Must receive all scenario results"
         );
 
+        timeline.sort_by(|m1, m2| m1.microsecond.cmp(&m2.microsecond));
+
         Ok(timeline)
     }
 
