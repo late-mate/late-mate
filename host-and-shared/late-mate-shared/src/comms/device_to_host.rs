@@ -64,20 +64,23 @@ pub struct BufferedMoment {
     pub total: u16,
 }
 
+pub const PANIC_CHUNK_SIZE: usize = 128;
+
 #[repr(u8)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum Message {
-    /// GetStatus response
+    /// GetStatus response (might be preceded by PanicChunks)
     Status(Status) = 0,
     /// Streamed on request (except when measurements are taken)
     CurrentLightLevel(u32) = 1,
     /// Streamed from an internal buffer after scenario is complete if
     /// start_timing_at_idx was not None
     BufferedMoment(BufferedMoment) = 3,
+    PanicChunk(heapless::Vec<u8, PANIC_CHUNK_SIZE>) = 4,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Envelope {
     /// The corresponding request's ID. Doesn't need to be unique, sreamed stuff like

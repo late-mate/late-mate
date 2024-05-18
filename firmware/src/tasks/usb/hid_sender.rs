@@ -1,6 +1,7 @@
+use defmt_or_log::*;
+
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
 use crate::MutexKind;
-use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
@@ -9,7 +10,6 @@ use embassy_time::Instant;
 use embassy_usb::class::hid::{Config, HidWriter, State};
 use embassy_usb::Builder;
 use late_mate_shared::comms;
-use log::error;
 use static_cell::StaticCell;
 use usbd_hid::descriptor::{KeyboardReport, MouseReport, SerializedDescriptor};
 

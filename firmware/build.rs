@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-arg-bins=-Tlink.x");
     println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
     // https://defmt.ferrous-systems.com/setup.html#linker-script
+    #[cfg(feature = "probe")]
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
 
     let gitcl = vergen_gitcl::GitclBuilder::default()

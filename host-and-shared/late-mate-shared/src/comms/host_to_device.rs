@@ -36,7 +36,7 @@ pub enum Message {
     // can be called repeatedly with overlapping durations, works as a keepalive
     StreamLightLevel { duration_ms: u16 } = 1,
     SendHidReport(HidRequest) = 2,
-    ExecuteScenario(Scenario) = 3,
+    RunScenario(Scenario) = 3,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]

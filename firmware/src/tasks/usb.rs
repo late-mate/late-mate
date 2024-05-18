@@ -1,5 +1,6 @@
+use defmt_or_log::*;
+
 use crate::serial_number::SerialNumber;
-use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
@@ -9,6 +10,7 @@ use late_mate_shared::{USB_PID, USB_VID};
 use static_cell::ConstStaticCell;
 
 pub mod bulk_comms;
+mod cdc_logger;
 mod device;
 pub mod hid_sender;
 

@@ -341,6 +341,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "defmt-or-log"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8370630b4dee85ab47d9087813771c5c7fe88d24fdd48649bbdfe6089da4c53a"
+dependencies = [
+ "defmt",
+ "defmt-or-log-macros",
+ "log",
+]
+
+[[package]]
+name = "defmt-or-log-macros"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d675dd299edbb7c8e01d4e9f520a0d8f22a8fe4af812c211c3fad5e9dcf41763"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.61",
+]
+
+[[package]]
 name = "defmt-parser"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -997,6 +1019,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "defmt",
+ "defmt-or-log",
  "defmt-rtt",
  "embassy-embedded-hal",
  "embassy-executor",
@@ -1009,6 +1032,7 @@ dependencies = [
  "late-mate-shared",
  "log",
  "numtoa",
+ "panic-persist",
  "panic-probe",
  "portable-atomic",
  "postcard",
@@ -1151,6 +1175,15 @@ name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+
+[[package]]
+name = "panic-persist"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32bb382689ecd2c4d2d4df9fd56700ba8d43b7b31cca11018cc0e6f8aef39fd5"
+dependencies = [
+ "cortex-m",
+]
 
 [[package]]
 name = "panic-probe"

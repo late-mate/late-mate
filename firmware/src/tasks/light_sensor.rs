@@ -1,10 +1,11 @@
+use defmt_or_log::*;
+
 use crate::MutexKind;
 use ads1220::command::{Command, Length, Offset};
 use ads1220::config::{
     ConversionMode, DataRate, Gain, Mode, Mux, Pga, Register0, Register1, Register2, Register3,
     Vref,
 };
-use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Input, Pull};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_16, PIN_18, PIN_19, PIN_22, SPI0};
@@ -112,7 +113,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
     let mut readback_buf = [0u8; 4];
     spi.read(&mut readback_buf).await.unwrap();
 
-    assert_eq!(full_config, readback_buf, "ADC must be configurable");
+    self::assert_eq!(full_config, readback_buf, "ADC must be configurable");
 }
 
 #[allow(clippy::too_many_arguments)]

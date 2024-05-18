@@ -1,6 +1,7 @@
+use defmt_or_log::*;
+
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
 use crate::MutexKind;
-use defmt::{debug, error, info};
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::{Endpoint as RpEndpoint, In, Out};
@@ -101,7 +102,8 @@ pub struct PreparedUsb {
     endpoint_out: RpEndpoint<'static, USB, Out>,
 }
 
-const _: () = assert!(
+// defmt doesn't support const asserts and it doesn't really need to
+const _: () = core::assert!(
     usb_interface::PACKET_SIZE <= USB_MAX_PACKET_SIZE,
     "Bulk interface packets should fit into USB packets"
 );
@@ -125,14 +127,14 @@ pub fn init_usb(
 
     let mut alt = interface.alt_setting(0xFF, 0, 0, None);
 
-    assert_eq!(alt.interface_number().0, usb_interface::NUMBER);
-    assert_eq!(alt.alt_setting_number(), usb_interface::ALT_SETTING_NUMBER);
+    self::assert_eq!(alt.interface_number().0, usb_interface::NUMBER);
+    self::assert_eq!(alt.alt_setting_number(), usb_interface::ALT_SETTING_NUMBER);
 
     let endpoint_in = alt.endpoint_bulk_in(usb_interface::PACKET_SIZE as u16);
     let endpoint_out = alt.endpoint_bulk_out(usb_interface::PACKET_SIZE as u16);
 
-    assert_eq!(endpoint_in.info().addr.index(), ENDPOINT_INDEX as usize);
-    assert_eq!(endpoint_out.info().addr.index(), ENDPOINT_INDEX as usize);
+    self::assert_eq!(endpoint_in.info().addr.index(), ENDPOINT_INDEX as usize);
+    self::assert_eq!(endpoint_out.info().addr.index(), ENDPOINT_INDEX as usize);
 
     PreparedUsb {
         endpoint_in,

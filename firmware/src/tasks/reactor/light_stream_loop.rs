@@ -1,7 +1,8 @@
+use defmt_or_log::*;
+
 use crate::tasks::light_sensor;
 use crate::tasks::usb::bulk_comms;
 use crate::MutexKind;
-use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{with_timeout, Duration, Instant, TimeoutError};
@@ -17,7 +18,7 @@ static STREAM_REQUEST: Channel<MutexKind, Option<Request>, 1> = Channel::new();
 
 #[embassy_executor::task]
 async fn light_stream_loop_task(mut light_stream_sub: light_sensor::Subscriber) {
-    info!("starting the light stream loop");
+    info!("Starting the light stream loop");
 
     let mut active_request = None;
 

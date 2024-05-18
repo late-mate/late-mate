@@ -1,4 +1,5 @@
-use defmt::info;
+use defmt_or_log::*;
+
 use embassy_rp::peripherals::FLASH;
 use static_cell::StaticCell;
 
@@ -38,8 +39,9 @@ pub fn read(peripheral: FLASH) -> &'static SerialNumber {
     // but my device returns 0xEF4015, so I assert the latter just in case.
     // I expect this assert to turn into an allow list of JEDEC IDs.
     // See https://github.com/embassy-rs/embassy/blob/56a7b10064b830b1be1933085a5845d0d6be5f2e/embassy-rp/src/flash.rs#L668-L675
-    assert_eq!(
-        jedec_id, 0xEF4015,
+    self::assert_eq!(
+        jedec_id,
+        0xEF4015,
         "Expecting a flash chip with reliable unique ID"
     );
 

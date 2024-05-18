@@ -4,21 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-embassy-embedded-hal = { version = "0.1", features = ["defmt"] }
-embassy-sync = { version = "0.5", features = ["defmt"] }
-embassy-executor = { version = "0.5", features = ["task-arena-size-32768", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "integrated-timers"] }
-embassy-time = { version = "0.3", features = ["defmt"] }
-embassy-rp = { version = "0.1", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"] }
-embassy-usb = { version = "0.1", features = ["defmt"] }
+embassy-embedded-hal = { version = "0.1" }
+embassy-sync = { version = "0.5" }
+embassy-executor = { version = "0.5", features = ["task-arena-size-32768", "arch-cortex-m", "executor-thread", "executor-interrupt", "integrated-timers"] }
+embassy-time = { version = "0.3" }
+embassy-rp = { version = "0.1", features = ["unstable-pac", "time-driver", "critical-section-impl"] }
+embassy-usb = { version = "0.1" }
 embassy-futures = { version = "0.1" }
-
-defmt = "0.3"
-defmt-rtt = "0.4"
 
 cortex-m = { version = "0.7" }
 cortex-m-rt = "0.7"
-
-panic-probe = { version = "0.3", features = ["print-defmt"] }
 
 usbd-hid = "0.7"
 
@@ -34,17 +29,57 @@ portable-atomic = { version = "1.6", features = ["critical-section"] }
 
 static_cell = { version = "2", features = [] }
 
+const-str = "0.5"
+
+log = { version = "0.4", optional = true }
+
+defmt-or-log = "0.2"
+
+defmt = { version = "0.3", optional = true }
+defmt-rtt = { version = "0.4", optional = true }
+
+panic-probe = { version = "0.3", features = ["print-defmt"], optional = true }
+
+panic-persist = "0.3"
+
 # shared stuff
 ads1220 = { path = "../host-and-shared/ads1220" }
 late-mate-shared = { path = "../host-and-shared/late-mate-shared" }
-log = "0.4.21"
-const-str = "0.5.7"
 
 [build-dependencies]
 vergen-gitcl = { version = "1.0.0-beta.2", default-features = false, features = [] }
+
+[features]
+# defmt through an RTT probe
+probe = [
+    "defmt-or-log/defmt",
+    "defmt",
+    "defmt-rtt",
+    "embassy-embedded-hal/defmt",
+    "embassy-sync/defmt",
+    "embassy-executor/defmt",
+    "embassy-time/defmt",
+    "embassy-rp/defmt",
+    "embassy-usb/defmt",
+    "panic-probe",
+    "late-mate-shared/use-defmt",
+]
+# …and this is for logging into usb serial, enabled by default
+usb-log = [
+    "log",
+    "defmt-or-log/log",
+    # todo: add when https://github.com/embassy-rs/embassy/pull/2414 gets released
+    # "embassy-usb-logger"
+]
+default = ["usb-log"]
+
+[profile.dev]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
 
 # see https://embassy.dev/book/dev/getting_started.html#_it_didnt_work
 [profile.release]
 debug = 2
 codegen-units = 1
-lto = "thin"
+lto = "fat"

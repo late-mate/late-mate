@@ -1,11 +1,12 @@
 mod light_recorder_loop;
 mod light_stream_loop;
 
+use defmt_or_log::*;
+
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor;
 use crate::tasks::usb::{bulk_comms, hid_sender};
 use crate::{scenario_buffer, MutexKind, FIRMWARE_VERSION, HARDWARE_VERSION, RED_LED_GPIO_PIN};
-use defmt::{error, info};
 use embassy_executor::Spawner;
 use embassy_rp::rom_data::reset_to_usb_boot;
 use embassy_sync::mutex::Mutex;
@@ -16,6 +17,7 @@ use late_mate_shared::comms::{device_to_host, host_to_device};
 async fn reactor_task(
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
     serial_number: &'static SerialNumber,
+    panic_bytes: Option<&'static [u8]>,
 ) {
     info!("Starting the reactor loop");
     loop {
@@ -33,6 +35,19 @@ async fn reactor_task(
             }
 
             host_to_device::Message::GetStatus => {
+                if let Some(bytes) = panic_bytes {
+                    for chunk in bytes.chunks(device_to_host::PANIC_CHUNK_SIZE) {
+                        let owned_chunk = heapless::Vec::from_slice(chunk)
+                            .expect("Panic chunk should fit into the vec");
+                        let msg = device_to_host::Message::PanicChunk(owned_chunk);
+                        let envelope = device_to_host::Envelope {
+                            request_id,
+                            response: Ok(Some(msg)),
+                        };
+                        bulk_comms::write_to_host(envelope).await;
+                    }
+                }
+
                 let status = device_to_host::Status {
                     version: device_to_host::Version {
                         hardware: HARDWARE_VERSION,
@@ -59,7 +74,7 @@ async fn reactor_task(
                 // ignore the instant the HID report was sent
                 .map(|_| None),
 
-            host_to_device::Message::ExecuteScenario(scenario) => execute_scenario(
+            host_to_device::Message::RunScenario(scenario) => run_scenario(
                 request_id,
                 buffer,
                 scenario.start_recording_at_idx,
@@ -77,7 +92,7 @@ async fn reactor_task(
         .await;
 
         if should_reset_to_usb_boot {
-            info!("resetting to USB firmware update mode");
+            info!("Resetting to USB firmware update mode");
 
             // sleep to allow the CLI to shut down cleanly
             Timer::after(Duration::from_secs(1)).await;
@@ -92,7 +107,7 @@ async fn reactor_task(
     }
 }
 
-async fn execute_scenario(
+async fn run_scenario(
     request_id: host_to_device::RequestId,
     buffer: &'static Mutex<MutexKind, scenario_buffer::Buffer>,
     start_recording_at_idx: Option<u8>,
@@ -169,11 +184,12 @@ pub fn init(
     light_stream_sub: light_sensor::Subscriber,
     light_recorder_sub: light_sensor::Subscriber,
     serial_number: &'static SerialNumber,
+    panic_bytes: Option<&'static [u8]>,
 ) {
     let buffer = scenario_buffer::init();
 
     light_stream_loop::init(spawner, light_stream_sub);
     light_recorder_loop::init(spawner, light_recorder_sub, buffer);
 
-    spawner.must_spawn(reactor_task(buffer, serial_number));
+    spawner.must_spawn(reactor_task(buffer, serial_number, panic_bytes));
 }

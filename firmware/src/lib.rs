@@ -1,10 +1,11 @@
 #![no_std]
 
-use defmt::info;
-// TODO: conditional compilation
-// https://github.com/simmsb/rusty-dilemma/blob/3b166839d33b9507bc81d1d2e9c6d6c2e3be8705/firmware/src/lib.rs#L34
-#[allow(unused_imports)]
+#[cfg(not(feature = "probe"))]
+use panic_persist as _;
+#[cfg(feature = "probe")]
 use {defmt_rtt as _, panic_probe as _};
+
+use defmt_or_log::*;
 
 mod firmware_version;
 mod scenario_buffer;
@@ -18,6 +19,7 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
 use embassy_time::Timer;
 use late_mate_shared::comms::device_to_host;
+use panic_persist::get_panic_message_bytes;
 
 pub const HARDWARE_VERSION: u8 = 1;
 pub const FIRMWARE_VERSION: device_to_host::FirmwareVersion = get_git_firmware_version();
@@ -63,11 +65,14 @@ pub async fn main(spawner: Spawner) {
 
     usb::run(&spawner, usb_driver, serial_number);
 
+    let panic_bytes = get_panic_message_bytes();
+
     reactor::init(
         &spawner,
         light_stream_sub,
         light_recorder_sub,
         serial_number,
+        panic_bytes,
     );
 
     indicator_led::init(&spawner, light_led_sub, p.PWM_CH1, p.PIN_2);
