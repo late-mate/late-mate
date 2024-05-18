@@ -11,17 +11,15 @@ use postcard::experimental::max_size::MaxSize;
 pub type RequestId = u32;
 
 #[repr(u8)]
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum ScenarioStep {
     HidRequest(HidRequest) = 0,
     Wait { ms: u16 } = 1,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Scenario {
     /// Index into the scenario vector (None if no measurement is needed)
     pub start_recording_at_idx: Option<u8>,
@@ -29,9 +27,8 @@ pub struct Scenario {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum Message {
     // not 0 to make it less likely to trigger by accident
     ResetToFirmwareUpdate = 254,
@@ -42,9 +39,8 @@ pub enum Message {
     ExecuteScenario(Scenario) = 3,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Envelope {
     /// Unique request ID that is then returned back and can be used to correlate request/response.
     /// Reused for streamed responses.

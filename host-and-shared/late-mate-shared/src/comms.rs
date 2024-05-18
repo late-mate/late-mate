@@ -37,7 +37,8 @@ pub struct CrcCobsAccumulator {
 // https://github.com/jamesmunns/postcard/issues/117
 // see https://github.com/jamesmunns/postcard/blob/393e18aeee3fe59872ad9231da225170c8296d56/src/accumulator.rs
 // for more comments
-#[derive(Debug, defmt::Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum FeedResult<'a, T> {
     /// Consumed all data, still pending.
     Consumed,

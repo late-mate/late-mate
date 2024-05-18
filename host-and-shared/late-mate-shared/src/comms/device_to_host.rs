@@ -11,9 +11,8 @@ use std::fmt::{Display, Formatter};
 // checks, and postcard seemingly won't be able to deal with unknown enum variants
 // see https://github.com/jamesmunns/postcard/issues/75
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct FirmwareVersion {
     pub git_commit: [u8; 4], // 8 hex symbols
     pub is_dirty: bool,
@@ -32,17 +31,15 @@ impl Display for FirmwareVersion {
     }
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Version {
     pub hardware: u8,
     pub firmware: FirmwareVersion,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Status {
     pub version: Version,
     pub max_light_level: u32,
@@ -50,17 +47,16 @@ pub struct Status {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum Event {
     LightLevel(u32) = 0,
     HidReport(HidRequestId) = 1,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+
 pub struct BufferedMoment {
     pub microsecond: u32,
     pub event: Event,
@@ -69,9 +65,8 @@ pub struct BufferedMoment {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum Message {
     /// GetStatus response
     Status(Status) = 0,
@@ -82,9 +77,8 @@ pub enum Message {
     BufferedMoment(BufferedMoment) = 3,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct Envelope {
     /// The corresponding request's ID. Doesn't need to be unique, sreamed stuff like
     /// light levels or buffered measurements just stream with the same request_id

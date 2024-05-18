@@ -9,9 +9,9 @@ use postcard::experimental::max_size::MaxSize;
 /// It is only unique for the given HostToDevice request
 pub type HidRequestId = u8;
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+
 pub struct MouseReport {
     pub buttons: u8,
     pub x: i8,
@@ -38,9 +38,9 @@ impl From<MouseReport> for usbd_hid::descriptor::MouseReport {
     }
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+
 pub struct KeyboardReport {
     pub modifier: u8,
     pub keycodes: [u8; 6],
@@ -64,17 +64,15 @@ impl From<KeyboardReport> for usbd_hid::descriptor::KeyboardReport {
 }
 
 #[repr(u8)]
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum HidReport {
     Mouse(MouseReport) = 0,
     Keyboard(KeyboardReport) = 1,
 }
 
-#[derive(
-    Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize, defmt::Format,
-)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct HidRequest {
     pub id: HidRequestId,
     pub report: HidReport,

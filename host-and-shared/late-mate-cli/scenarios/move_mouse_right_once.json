@@ -9,13 +9,17 @@
     },
     {
       "type": "wait",
-      "ms": 1000
+      "ms": 200
     }
   ],
   "revert": [
     {
       "type": "mouse",
       "x": -30
+    },
+    {
+      "type": "wait",
+      "ms": 400
     }
   ],
   "repeats": 1
