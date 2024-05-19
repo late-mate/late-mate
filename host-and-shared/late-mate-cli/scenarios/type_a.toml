@@ -1,0 +1,28 @@
+repeats = 1
+delay_between_ms = [200, 300]
+
+[[test]]
+type = "start_timing"
+
+[[test]]
+type = "keyboard"
+pressed_keys = ["a"]
+
+# keyboard events are stateful, so it's important to explicitly release the key
+[[test]]
+type = "keyboard"
+
+[[test]]
+type = "wait"
+ms = 200
+
+[[revert]]
+type = "keyboard"
+pressed_keys = ["backspace"]
+
+[[test]]
+type = "keyboard"
+
+[[revert]]
+type = "wait"
+ms = 400

@@ -3,6 +3,7 @@ use crate::agents::usb_tx::UsbTxHandle;
 use crate::agents::{agent_watcher, dispatcher, usb_rx, usb_tx};
 use crate::scenario::{to_device_scenario, Moment, Recording, Scenario};
 use crate::usb::UsbDevice;
+use futures::TryFutureExt;
 use late_mate_shared::comms;
 use late_mate_shared::comms::device_to_host;
 use late_mate_shared::comms::host_to_device;
@@ -31,8 +32,10 @@ pub enum Error {
     UsbError(&'static str, #[source] nusb::Error),
     #[error("USB transfer error while {0}")]
     UsbTransferError(&'static str, #[source] nusb::transfer::TransferError),
-    #[error("Timeout while trying to execute an operation")]
-    Timeout,
+    #[error("Timeout while sending the request")]
+    RequestTimeout,
+    #[error("Timeout while waiting for the response")]
+    ResponseTimeout,
 }
 
 type ResponseResult = Result<Option<device_to_host::Message>, Error>;
@@ -43,15 +46,17 @@ pub struct Status {
     pub firmware_version: String,
     pub serial_number: String,
     pub max_light_level: u32,
+    pub last_panic_message: Option<String>,
 }
 
-impl From<device_to_host::Status> for Status {
-    fn from(
+impl Status {
+    pub fn from_device(
         device_to_host::Status {
             version,
             max_light_level,
             serial_number,
         }: device_to_host::Status,
+        last_panic_message: Option<String>,
     ) -> Self {
         Self {
             hardware_version: version.hardware.to_string(),
@@ -61,6 +66,7 @@ impl From<device_to_host::Status> for Status {
                 .map(|b| format!("{:02X}", b).to_string())
                 .collect(),
             max_light_level,
+            last_panic_message,
         }
     }
 }
@@ -71,6 +77,7 @@ pub struct Device {
     dispatcher: DispatcherHandle,
 
     pub max_light_level: u32,
+    pub last_panic_message: Option<String>,
 }
 
 // struct BackgroundLevelMonitor {
@@ -129,11 +136,13 @@ pub struct Device {
 
 impl Device {
     pub async fn init() -> Result<Self, Error> {
+        tracing::debug!("Acquiring the device");
         let usb_device = UsbDevice::acquire().await?;
+
         let (in_queue, out_queue) = usb_device.into_queues()?;
 
+        tracing::debug!("Starting the agents");
         let mut agent_set: JoinSet<()> = JoinSet::new();
-
         let usb_rx = usb_rx::start(&mut agent_set, in_queue);
         let usb_tx = usb_tx::start(&mut agent_set, out_queue);
         let dispatcher = dispatcher::start(&mut agent_set, usb_rx);
@@ -143,55 +152,74 @@ impl Device {
             usb_tx,
             dispatcher,
             max_light_level: 0,
+            last_panic_message: None,
         };
 
         // todo: remove this match after Dan Luu updates his device; I only need this because
         //       I shortened the version string, so the driver hangs while trying to initialise
+        tracing::debug!("Requesting the initial device status");
         let max_light_level = match self_.get_status().await {
-            Err(Error::Timeout) => 0,
+            Err(Error::ResponseTimeout) => 0,
             Err(e) => return Err(e),
             Ok(status) => status.max_light_level,
         };
         self_.max_light_level = max_light_level;
 
+        tracing::debug!("The device is now successfully initialised");
         Ok(self_)
     }
 
     async fn make_request(
         &self,
         request: host_to_device::Message,
-    ) -> mpsc::Receiver<ResponseResult> {
+    ) -> Result<mpsc::Receiver<ResponseResult>, Error> {
         let (receiver, envelope) = self.dispatcher.register_request(request).await;
 
-        self.usb_tx
-            .send(envelope)
-            .await
-            .expect("Device should be ready");
+        self.usb_tx.send(envelope).await?;
 
-        receiver
+        Ok(receiver)
     }
 
     async fn one_off(&self, request: host_to_device::Message) -> ResponseResult {
-        let mut response_stream = self.make_request(request).await;
+        let mut response_receiver = self.make_request(request).await?;
 
-        timeout(
-            Duration::from_millis(MAX_SCENARIO_DURATION_MS + 1000),
-            response_stream.recv(),
-        )
-        .await
-        .map_err(|_| Error::Timeout)?
-        .expect("Pending response channel should not be dropped")
+        let result = timeout(usb::OPERATION_TIMEOUT, response_receiver.recv()).await;
+
+        result
+            .map_err(|_| Error::ResponseTimeout)?
+            .expect("Pending response channel should not be dropped")
     }
 
-    pub async fn get_status(&self) -> Result<Status, Error> {
-        let response = self
-            .one_off(host_to_device::Message::GetStatus)
-            .await?
-            .expect("Status response should be present");
+    pub async fn get_status(&mut self) -> Result<Status, Error> {
+        let mut response_receiver = self
+            .make_request(host_to_device::Message::GetStatus)
+            .await?;
 
-        match response {
-            device_to_host::Message::Status(s) => Ok(s.into()),
-            _ => unreachable!("Status response should be of correct type"),
+        let mut panic_bytes = Vec::new();
+        loop {
+            let timely_response = timeout(usb::OPERATION_TIMEOUT, response_receiver.recv())
+                .await
+                .map_err(|_| Error::ResponseTimeout)?;
+            let maybe_message =
+                timely_response.expect("Pending response channel should not be dropped")?;
+            let message = maybe_message.expect("Status response should be present");
+            match message {
+                device_to_host::Message::PanicChunk(chunk) => {
+                    panic_bytes.extend(chunk);
+                }
+                device_to_host::Message::Status(device_status) => {
+                    let last_panic_message = if panic_bytes.is_empty() {
+                        None
+                    } else {
+                        Some(String::from_utf8_lossy(&panic_bytes).to_string())
+                    };
+                    if last_panic_message.is_some() {
+                        self.last_panic_message.clone_from(&last_panic_message);
+                    }
+                    return Ok(Status::from_device(device_status, last_panic_message));
+                }
+                _ => unreachable!("Status response should be of correct type"),
+            }
         }
     }
 
@@ -276,15 +304,17 @@ impl Device {
             let mut unsafe_rng = SmallRng::from_entropy();
 
             for _repeat in 0..scenario.repeats {
-                let request =
-                    host_to_device::Message::ExecuteScenario(test_device_scenario.clone());
-                let resp_receiver = device.make_request(request).await;
-                let recording_result = Device::assemble_timeline(resp_receiver, &test_hid_index)
-                    .await
-                    .map(|timeline| Recording {
-                        max_light_level: device.max_light_level,
-                        timeline,
-                    });
+                let request = host_to_device::Message::RunScenario(test_device_scenario.clone());
+                let recording_result = match device.make_request(request).await {
+                    Ok(resp_receiver) => Device::assemble_timeline(resp_receiver, &test_hid_index)
+                        .await
+                        .map(|timeline| Recording {
+                            max_light_level: device.max_light_level,
+                            timeline,
+                        }),
+                    Err(e) => Err(e),
+                };
+
                 // this is needed to only break AFTER sending the error
                 let recording_err = recording_result.is_err();
                 // the receiver went away
@@ -294,7 +324,7 @@ impl Device {
                 }
 
                 if let Some((ref device_scenario, _)) = revert {
-                    let request = host_to_device::Message::ExecuteScenario(device_scenario.clone());
+                    let request = host_to_device::Message::RunScenario(device_scenario.clone());
                     match device.one_off(request).await {
                         Ok(None) => (),
                         Ok(Some(_)) => unreachable!("Revert scenario should not return anything"),

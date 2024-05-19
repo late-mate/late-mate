@@ -29,14 +29,14 @@ pub struct MouseReport {
     pub pan: i8,
 }
 
-impl From<&MouseReport> for late_mate_shared::comms::hid::MouseReport {
+impl From<&MouseReport> for comms::hid::MouseReport {
     fn from(value: &MouseReport) -> Self {
         let mut byte_buttons = 0u8;
         for button in &value.buttons {
             byte_buttons |= *button as u8
         }
 
-        late_mate_shared::comms::hid::MouseReport {
+        comms::hid::MouseReport {
             buttons: byte_buttons,
             x: value.x,
             y: value.y,

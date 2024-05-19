@@ -18,8 +18,9 @@ axum = { version = "0.7", features = ["ws"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["fs", "trace"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18" }
 headers = "0.4"
 ts-rs = "8.1.0"
 
 late-mate-device = { path = "../late-mate-device" }
+toml = { version = "0.8.13", default-features = false, features = ["parse"] }

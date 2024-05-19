@@ -12,7 +12,7 @@ pub struct Cli {
 }
 
 #[derive(clap::Subcommand, Debug)]
-enum Command {
+pub enum Command {
     /// Request status from the Late Mate device
     Status(status::Args),
     // todo
@@ -35,7 +35,7 @@ enum Command {
 }
 
 impl Command {
-    pub async fn run(self, device: &Device) -> anyhow::Result<()> {
+    pub async fn run(self, device: &mut Device) -> anyhow::Result<()> {
         match self {
             Command::Status(cmd) => cmd.run(device).await,
             Command::ResetToFirmwareUpdate(cmd) => cmd.run(device).await,

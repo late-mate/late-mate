@@ -1,11 +1,13 @@
 use crate::usb::ALIGNED_BUFFER_SIZE;
-use crate::Error;
+use crate::{usb, Error};
+use futures::TryFutureExt;
 use late_mate_shared::comms;
 use late_mate_shared::comms::host_to_device;
 use nusb::transfer;
 use nusb::transfer::TransferError;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinSet;
+use tokio::time::timeout;
 
 async fn usb_tx_loop(
     mut out_queue: transfer::Queue<Vec<u8>>,
@@ -60,8 +62,12 @@ impl UsbTxHandle {
             .await
             .map_err(|_| Error::Disconnected)?;
 
-        match error_receiver.await {
+        match timeout(usb::OPERATION_TIMEOUT, error_receiver)
+            .map_err(|_| Error::RequestTimeout)
+            .await?
+        {
             Ok(e) => Err(e),
+            // the other side is dropped => the packet is now sent
             Err(_) => Ok(()),
         }
     }

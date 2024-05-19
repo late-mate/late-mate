@@ -1,6 +1,6 @@
 use crate::Error;
 use late_mate_shared::comms::usb_interface;
-use late_mate_shared::{comms, USB_PID, USB_VID};
+use late_mate_shared::{comms, MAX_SCENARIO_DURATION_MS, USB_PID, USB_VID};
 use nusb::transfer;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -9,6 +9,8 @@ use tokio::time::sleep;
 // fit postcard packets and also satisfy nusb requirements
 pub const ALIGNED_BUFFER_SIZE: usize =
     (comms::MAX_BUFFER_SIZE / usb_interface::PACKET_SIZE + 1) * usb_interface::PACKET_SIZE;
+
+pub const OPERATION_TIMEOUT: Duration = Duration::from_millis(MAX_SCENARIO_DURATION_MS + 1000);
 
 pub struct UsbDevice {
     nusb_device: nusb::Device,

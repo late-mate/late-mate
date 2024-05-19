@@ -7,9 +7,16 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 pub async fn run() -> anyhow::Result<()> {
     let parsed_cli: cli::Cli = clap::Parser::parse();
 
-    let device = Device::init().await?;
+    // construct a subscriber that prints formatted traces to stdout
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    // use that subscriber to process traces emitted after this point
+    tracing::subscriber::set_global_default(subscriber)?;
 
-    parsed_cli.command.run(&device).await
+    tracing::debug!("Initialising the device");
+    let mut device = Device::init().await?;
+
+    tracing::debug!("Running the command");
+    parsed_cli.command.run(&mut device).await
 }
 
 // pub async fn monitor_background(mut device: Device) -> anyhow::Result<()> {
