@@ -5,9 +5,9 @@ use crate::{scenario_buffer, MutexKind};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_sync::mutex::Mutex;
-use embassy_time::{with_timeout, TimeoutError};
+use embassy_time::{with_timeout, Instant, TimeoutError};
 
-static SHOULD_RUN: Channel<MutexKind, bool, 1> = Channel::new();
+static SHOULD_RUN_SINCE: Channel<MutexKind, Option<Instant>, 1> = Channel::new();
 
 #[embassy_executor::task]
 async fn light_recorder_loop_task(
@@ -16,14 +16,14 @@ async fn light_recorder_loop_task(
 ) {
     info!("Starting the light scenario loop");
 
-    let mut is_active = false;
+    let mut should_run_since = None;
 
     loop {
-        while !is_active {
-            is_active = SHOULD_RUN.receive().await;
+        while should_run_since.is_none() {
+            should_run_since = SHOULD_RUN_SINCE.receive().await;
         }
 
-        'inner: while is_active {
+        'inner: while should_run_since.is_some() {
             match with_timeout(
                 light_sensor::TIMEOUT,
                 light_recorder_sub.next_message_pure(),
@@ -31,10 +31,16 @@ async fn light_recorder_loop_task(
             .await
             {
                 Ok(reading) => {
+                    if reading.instant < should_run_since.unwrap() {
+                        // There might be a value in the channel that was generated earlier
+                        // than the recording has started. Just skip it
+                        debug!("Got a light value from the past");
+                        continue;
+                    }
                     let push_result = buffer.lock().await.store(reading.instant, reading.into());
                     if push_result.is_err() {
                         error!("Buffer push failed, stopping the buffer recording");
-                        is_active = false;
+                        should_run_since = None;
                         break 'inner;
                     }
                 }
@@ -42,25 +48,25 @@ async fn light_recorder_loop_task(
                     // if we got the timeout here, something is really wrong and there's no point
                     // continuing
                     error!("Timeout waiting for a light reading, stopping the buffer recording");
-                    is_active = false;
+                    should_run_since = None;
                     break 'inner;
                 }
             }
 
-            if let Ok(new_is_active) = SHOULD_RUN.try_receive() {
-                is_active = new_is_active;
+            if let Ok(new) = SHOULD_RUN_SINCE.try_receive() {
+                should_run_since = new;
             }
         }
     }
 }
 
-pub async fn start() {
-    SHOULD_RUN.send(true).await;
+pub async fn start(since: Instant) {
+    SHOULD_RUN_SINCE.send(Some(since)).await;
 }
 
 pub async fn stop() {
     // if the value is taken, the loop has stopped
-    SHOULD_RUN.send(false).await;
+    SHOULD_RUN_SINCE.send(None).await;
 }
 
 pub fn init(

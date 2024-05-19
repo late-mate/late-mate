@@ -19,7 +19,35 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::usb::Driver as UsbDriver;
 use embassy_time::Timer;
 use late_mate_shared::comms::device_to_host;
-use panic_persist::get_panic_message_bytes;
+
+#[cfg(not(feature = "probe"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    cortex_m::interrupt::disable();
+
+    // panic_persist::report_panic_info(info);
+    //
+    // embassy_rp::pac::SIO.spinlock(31).write_value(1);
+    // cortex_m::peripheral::SCB::sys_reset();
+
+    // Here is the problem: SCB::sys_reset leads to the device reliably hanging.
+    // it looks like it spins trying to grab spinlock 31 and fails. Apparently this is
+    // a known issue for RP2040 (see the comment in bin/late-mate.rs), but what's weird
+    // is that manually setting the lock doesn't help at all (either here in the panic
+    // handler, or in the binary).
+    // Watchdog reset nukes the entire state and restarts everything from the clear slate,
+    // but the problem, of course, is that the panic message gets nuked, too. This
+    // is not ideal, but I'm not sure if I can come up with something smart here at this
+    // ungodly hour.
+    // I asked for help in embassy matrix channel, will update this comment if anything changes.
+    // For now, I'll just reset the device on panics.
+
+    let p = unsafe { embassy_rp::Peripherals::steal().WATCHDOG };
+    let mut watchdog = embassy_rp::watchdog::Watchdog::new(p);
+    watchdog.trigger_reset();
+
+    loop {}
+}
 
 pub const HARDWARE_VERSION: u8 = 1;
 pub const FIRMWARE_VERSION: device_to_host::FirmwareVersion = get_git_firmware_version();
@@ -36,7 +64,7 @@ bind_interrupts!(struct UsbIrqs {
 type MutexKind = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 
 // used by ResetToFirmwareUpdate to indicate disk activity
-pub const RED_LED_GPIO_PIN: i32 = 14;
+pub const BLUE_LED_GPIO_PIN: i32 = 6;
 
 // Must be equal to the size of the flash chip. Pico uses a 2MB chip
 pub const FLASH_SIZE: usize = 2 * 1024 * 1024;
@@ -65,7 +93,10 @@ pub async fn main(spawner: Spawner) {
 
     usb::run(&spawner, usb_driver, serial_number);
 
-    let panic_bytes = get_panic_message_bytes();
+    #[cfg(not(feature = "probe"))]
+    let panic_bytes = panic_persist::get_panic_message_bytes();
+    #[cfg(feature = "probe")]
+    let panic_bytes: Option<&[u8]> = None;
 
     reactor::init(
         &spawner,

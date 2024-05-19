@@ -6,7 +6,7 @@ use defmt_or_log::*;
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor;
 use crate::tasks::usb::{bulk_comms, hid_sender};
-use crate::{scenario_buffer, MutexKind, FIRMWARE_VERSION, HARDWARE_VERSION, RED_LED_GPIO_PIN};
+use crate::{scenario_buffer, MutexKind, BLUE_LED_GPIO_PIN, FIRMWARE_VERSION, HARDWARE_VERSION};
 use embassy_executor::Spawner;
 use embassy_rp::rom_data::reset_to_usb_boot;
 use embassy_sync::mutex::Mutex;
@@ -20,6 +20,7 @@ async fn reactor_task(
     panic_bytes: Option<&'static [u8]>,
 ) {
     info!("Starting the reactor loop");
+
     loop {
         let host_to_device::Envelope {
             request_id,
@@ -102,7 +103,7 @@ async fn reactor_task(
             //
             // first arg: bitmask for the LED that will indicate USB Mass Storage activity
             // second arg: allows disabling bootloader USB interfaces, 0 enables everything
-            reset_to_usb_boot(1 << RED_LED_GPIO_PIN, 0);
+            reset_to_usb_boot(1 << BLUE_LED_GPIO_PIN, 0);
         }
     }
 }
@@ -121,8 +122,9 @@ async fn run_scenario(
 
     for (idx, step) in steps.into_iter().enumerate() {
         if start_recording_at_idx.is_some_and(|start_idx| idx == start_idx as usize) {
-            buffer.lock().await.clear(Instant::now());
-            light_recorder_loop::start().await;
+            let start_at = Instant::now();
+            buffer.lock().await.clear(start_at);
+            light_recorder_loop::start(start_at).await;
             recording_started = true;
         }
 
