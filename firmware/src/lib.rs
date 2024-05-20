@@ -1,7 +1,5 @@
 #![no_std]
 
-#[cfg(not(feature = "probe"))]
-use panic_persist as _;
 #[cfg(feature = "probe")]
 use {defmt_rtt as _, panic_probe as _};
 
@@ -94,7 +92,7 @@ pub async fn main(spawner: Spawner) {
     usb::run(&spawner, usb_driver, serial_number);
 
     #[cfg(not(feature = "probe"))]
-    let panic_bytes = panic_persist::get_panic_message_bytes();
+    let panic_bytes = None; //panic_persist::get_panic_message_bytes();
     #[cfg(feature = "probe")]
     let panic_bytes: Option<&[u8]> = None;
 

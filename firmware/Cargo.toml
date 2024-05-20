@@ -40,8 +40,6 @@ defmt-rtt = { version = "0.4", optional = true }
 
 panic-probe = { version = "0.3", features = ["print-defmt"], optional = true }
 
-panic-persist = { version = "0.3", features = ["custom-panic-handler"] }
-
 # shared stuff
 ads1220 = { path = "../host-and-shared/ads1220" }
 late-mate-shared = { path = "../host-and-shared/late-mate-shared" }

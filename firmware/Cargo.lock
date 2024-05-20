@@ -1032,7 +1032,6 @@ dependencies = [
  "late-mate-shared",
  "log",
  "numtoa",
- "panic-persist",
  "panic-probe",
  "portable-atomic",
  "postcard",
@@ -1175,15 +1174,6 @@ name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
-
-[[package]]
-name = "panic-persist"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32bb382689ecd2c4d2d4df9fd56700ba8d43b7b31cca11018cc0e6f8aef39fd5"
-dependencies = [
- "cortex-m",
-]
 
 [[package]]
 name = "panic-probe"
