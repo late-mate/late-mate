@@ -45,13 +45,11 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
 
     // Embassy's USB needs a bunch of buffers. ConstStaticCell guarantees those arrays
     // are completely static and are never on the stack
-    static DEVICE_DESCRIPTOR: ConstStaticCell<[u8; 256]> = ConstStaticCell::new([0; 256]);
     static CONFIG_DESCRIPTOR: ConstStaticCell<[u8; 256]> = ConstStaticCell::new([0; 256]);
     static BOS_DESCRIPTOR: ConstStaticCell<[u8; 256]> = ConstStaticCell::new([0; 256]);
     static MSOS_DESCRIPTOR: ConstStaticCell<[u8; 256]> = ConstStaticCell::new([0; 256]);
     static CONTROL_BUF: ConstStaticCell<[u8; 64]> = ConstStaticCell::new([0; 64]);
 
-    let device_descriptor: &'static mut [u8; 256] = DEVICE_DESCRIPTOR.take();
     let config_descriptor: &'static mut [u8; 256] = CONFIG_DESCRIPTOR.take();
     let bos_descriptor: &'static mut [u8; 256] = BOS_DESCRIPTOR.take();
     let msos_descriptor: &'static mut [u8; 256] = MSOS_DESCRIPTOR.take();
@@ -60,7 +58,6 @@ pub fn init_usb<'d, D: embassy_usb::driver::Driver<'d>>(
     let mut builder = Builder::new(
         driver,
         config,
-        device_descriptor,
         config_descriptor,
         bos_descriptor,
         msos_descriptor,

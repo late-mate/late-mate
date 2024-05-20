@@ -15,7 +15,7 @@ serde = { version = "1", default-features = false, features = ["derive"] }
 # it's a transitive dependency, but I need to manage it's "std" feature that is a default feature
 ssmarshal = { version = "1", default-features = false }
 # must track embassy's version
-usbd-hid = "0.6.1"
+usbd-hid = "0.7.0"
 
 defmt = { version = "0.3", optional = true }
 

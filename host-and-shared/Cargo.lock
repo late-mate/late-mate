@@ -653,6 +653,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hash32"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -690,10 +699,20 @@ checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
 dependencies = [
  "atomic-polyfill",
  "defmt",
- "hash32",
+ "hash32 0.2.1",
  "rustc_version",
  "serde",
  "spin",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "heapless"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
+dependencies = [
+ "hash32 0.3.1",
  "stable_deref_trait",
 ]
 
@@ -879,7 +898,7 @@ dependencies = [
  "cobs",
  "crc",
  "defmt",
- "heapless",
+ "heapless 0.7.17",
  "postcard",
  "serde",
  "ssmarshal",
@@ -1100,6 +1119,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "portable-atomic"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7170ef9988bc169ba16dd36a7fa041e5c4cbeb6a35b76d4c03daded371eae7c0"
+
+[[package]]
 name = "postcard"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1109,7 +1134,7 @@ dependencies = [
  "const_format",
  "crc",
  "defmt",
- "heapless",
+ "heapless 0.7.17",
  "paste",
  "postcard-derive",
  "serde",
@@ -1808,15 +1833,19 @@ dependencies = [
 
 [[package]]
 name = "usb-device"
-version = "0.2.9"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f6cc3adc849b5292b4075fc0d5fdcf2f24866e88e336dd27a8943090a520508"
+checksum = "98816b1accafbb09085168b90f27e93d790b4bfa19d883466b5e53315b5f06a6"
+dependencies = [
+ "heapless 0.8.0",
+ "portable-atomic",
+]
 
 [[package]]
 name = "usbd-hid"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975bd411f4a939986751ea09992a24fa47c4d25c6ed108d04b4c2999a4fd0132"
+checksum = "41a2d4546ca3e6a5c6a85584e5caf29feabf3ec35d6cd6b772eb35bd3cff7256"
 dependencies = [
  "serde",
  "ssmarshal",
