@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::tasks::light_sensor;
 use crate::tasks::usb::bulk_comms;
 use crate::MutexKind;

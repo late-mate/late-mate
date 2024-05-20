@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::tasks::usb::MAX_PACKET_SIZE as USB_MAX_PACKET_SIZE;
 use crate::MutexKind;
 use embassy_executor::Spawner;

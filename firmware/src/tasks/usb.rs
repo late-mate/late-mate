@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::serial_number::SerialNumber;
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
@@ -77,11 +75,14 @@ pub fn run(spawner: &Spawner, driver: Driver<'static, USB>, serial_number: &'sta
 
     let mut builder = init_usb(driver, serial_number);
 
-    let serial_usb = bulk_comms::init_usb(&mut builder);
+    // must go first to get interface 0
+    let comms_usb = bulk_comms::init_usb(&mut builder);
     let hid_usb = hid_sender::init_usb(&mut builder);
+    let cdc_logger_usb = cdc_logger::init_usb(&mut builder);
 
     device::run(spawner, builder);
 
-    bulk_comms::run(spawner, serial_usb);
+    cdc_logger::run(spawner, cdc_logger_usb);
+    bulk_comms::run(spawner, comms_usb);
     hid_sender::run(spawner, hid_usb);
 }

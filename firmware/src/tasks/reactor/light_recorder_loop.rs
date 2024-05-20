@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::tasks::light_sensor;
 use crate::{scenario_buffer, MutexKind};
 use embassy_executor::Spawner;

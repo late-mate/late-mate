@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::MutexKind;
 use ads1220::command::{Command, Length, Offset};
 use ads1220::config::{
@@ -113,7 +111,7 @@ async fn configure_adc(spi: &mut Spi<'static, SPI0, Async>) {
     let mut readback_buf = [0u8; 4];
     spi.read(&mut readback_buf).await.unwrap();
 
-    self::assert_eq!(full_config, readback_buf, "ADC must be configurable");
+    assert_eq!(full_config, readback_buf, "ADC must be configurable");
 }
 
 #[allow(clippy::too_many_arguments)]

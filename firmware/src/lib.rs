@@ -3,7 +3,8 @@
 #[cfg(feature = "probe")]
 use {defmt_rtt as _, panic_probe as _};
 
-use defmt_or_log::*;
+// This mod must go first for following modules to see its macros
+pub(crate) mod logging;
 
 mod firmware_version;
 mod scenario_buffer;
@@ -91,6 +92,8 @@ pub async fn main(spawner: Spawner) {
 
     usb::run(&spawner, usb_driver, serial_number);
 
+    // todo: this is a remnant of trying to handle the panic message; decide
+    //       what to do with this later
     #[cfg(not(feature = "probe"))]
     let panic_bytes = None; //panic_persist::get_panic_message_bytes();
     #[cfg(feature = "probe")]
@@ -105,6 +108,8 @@ pub async fn main(spawner: Spawner) {
     );
 
     indicator_led::init(&spawner, light_led_sub, p.PWM_CH1, p.PIN_2);
+
+    info!("Initialisation finished!");
 
     core::future::pending::<()>().await;
 }

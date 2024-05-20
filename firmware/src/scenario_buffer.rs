@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use crate::MutexKind;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
@@ -49,7 +47,7 @@ impl Buffer {
 
     /// Returns Error if the buffer or the time counter will overflow
     pub fn store(&mut self, happened_at: Instant, event: device_to_host::Event) -> Result<(), ()> {
-        self::assert!(
+        assert!(
             happened_at >= self.started_at,
             "Time travellers shouldn't use this code"
         );

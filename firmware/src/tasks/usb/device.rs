@@ -1,5 +1,3 @@
-use defmt_or_log::*;
-
 use embassy_executor::Spawner;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;

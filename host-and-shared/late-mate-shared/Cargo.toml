@@ -21,4 +21,8 @@ defmt = { version = "0.3", optional = true }
 
 [features]
 std = ["ssmarshal/std"]
-use-defmt = ["defmt", "heapless/defmt-impl", "postcard/use-defmt"]
+defmt = [
+    "dep:defmt",
+    "heapless/defmt-impl",
+    "postcard/use-defmt"
+]

@@ -12,7 +12,7 @@ use std::fmt::{Display, Formatter};
 // see https://github.com/jamesmunns/postcard/issues/75
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct FirmwareVersion {
     pub git_commit: [u8; 4], // 8 hex symbols
     pub is_dirty: bool,
@@ -32,14 +32,14 @@ impl Display for FirmwareVersion {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Version {
     pub hardware: u8,
     pub firmware: FirmwareVersion,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Status {
     pub version: Version,
     pub max_light_level: u32,
@@ -48,14 +48,14 @@ pub struct Status {
 
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Event {
     LightLevel(u32) = 0,
     HidReport(HidRequestId) = 1,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 
 pub struct BufferedMoment {
     pub microsecond: u32,
@@ -68,7 +68,7 @@ pub const PANIC_CHUNK_SIZE: usize = 128;
 
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Message {
     /// GetStatus response (might be preceded by PanicChunks)
     Status(Status) = 0,
@@ -81,7 +81,7 @@ pub enum Message {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, serde::Deserialize, serde::Serialize, MaxSize)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Envelope {
     /// The corresponding request's ID. Doesn't need to be unique, sreamed stuff like
     /// light levels or buffered measurements just stream with the same request_id

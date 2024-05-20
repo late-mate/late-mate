@@ -1,8 +1,6 @@
 mod light_recorder_loop;
 mod light_stream_loop;
 
-use defmt_or_log::*;
-
 use crate::serial_number::SerialNumber;
 use crate::tasks::light_sensor;
 use crate::tasks::usb::{bulk_comms, hid_sender};
