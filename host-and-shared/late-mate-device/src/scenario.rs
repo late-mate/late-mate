@@ -66,7 +66,7 @@ impl Scenario {
             .as_ref()
             .map_or(Duration::default(), |r| r.iter().map(Duration::from).sum());
 
-        let repeats = u32::try_from(self.repeats).expect("Repeats should fit into u32");
+        let repeats = u32::from(self.repeats);
         let base = (revert_duration + self.test_duration()) * repeats;
 
         (

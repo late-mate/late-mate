@@ -23,7 +23,7 @@ pub struct Args {
 
 #[derive(clap::Args, Debug)]
 #[group(required = true, multiple = true)]
-struct ScenarioOutput {
+pub struct ScenarioOutput {
     /// Path to a directory where a subdirectory with JSON files will be created.
     /// Can be set simultaneously with other output options
     #[arg(long)]

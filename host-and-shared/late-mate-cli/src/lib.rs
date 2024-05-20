@@ -1,8 +1,6 @@
 mod cli;
 
-use anyhow::Context;
 use late_mate_device::Device;
-use tokio::io::{AsyncRead, AsyncReadExt};
 
 pub async fn run() -> anyhow::Result<()> {
     let parsed_cli: cli::Cli = clap::Parser::parse();
