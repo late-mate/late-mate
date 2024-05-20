@@ -5,4 +5,4 @@ flash:
     cargo run --release --bin latemate
 
 build-uf2:
-    DEFMT_LOG=info cargo build --release --bin late-mate && elf2uf2-rs target/thumbv6m-none-eabi/release/late-mate late-mate.uf2
+    cargo build --release --bin late-mate && elf2uf2-rs target/thumbv6m-none-eabi/release/late-mate late-mate.uf2
