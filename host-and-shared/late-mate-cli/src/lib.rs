@@ -1,4 +1,5 @@
 mod cli;
+mod statistics;
 
 use late_mate_device::Device;
 

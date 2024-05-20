@@ -1,9 +1,12 @@
+use crate::statistics::process_recording;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
+use indicatif::{ProgressBar, ProgressFinish, ProgressStyle};
 use late_mate_device::scenario::Scenario;
 use late_mate_device::Device;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(clap::Args, Debug)]
@@ -24,20 +27,15 @@ pub struct Args {
 #[derive(clap::Args, Debug)]
 #[group(required = true, multiple = true)]
 pub struct ScenarioOutput {
-    /// Path to a directory where a subdirectory with JSON files will be created.
+    /// Path to a directory where a subdirectory with JSON results will be created.
     /// Can be set simultaneously with other output options
     #[arg(long)]
     output_json_dir: Option<PathBuf>,
 
-    /// Path to a directory where a subdirectory with CSV files will be created.
+    /// Path to a directory where a subdirectory with CSV results will be created.
     /// Can be set simultaneously with other output options
     #[arg(long)]
     output_csv_dir: Option<PathBuf>,
-
-    /// If set, detected changepoints are sent line-by-line to STDOUT.
-    /// Can be set simultaneously with other output options
-    #[arg(long)]
-    output_stdout: bool,
 }
 
 impl Args {
@@ -72,13 +70,43 @@ impl Args {
     }
 
     pub async fn run(self, device: &Device) -> anyhow::Result<()> {
-        let scenario = self.read_scenario().await?;
+        let mut scenario = self.read_scenario().await?;
+        if let Some(repeats_override) = self.repeats {
+            scenario.repeats = repeats_override;
+        }
+
+        let progress = ProgressBar::new(u64::from(scenario.repeats));
+        // Note that I can't use the spinner if I want to minimise load during the test
+        progress.set_style(
+            ProgressStyle::with_template(
+                "{prefix:.bold}  {bar:40.cyan} {pos:>3}/{len:3} [eta: {eta}]",
+            )
+            .expect("Progress bar template must be correct"),
+        );
+        progress.set_prefix("Running the scenario…");
+
         let mut stream = device
             .run_scenario(scenario)
             .await
-            .context("Scenario validation error")?;
-        while let Some(x) = stream.next().await {
-            println!("New testing result:\n{x:?}");
+            .context("Scenario validation error")?
+            .enumerate();
+
+        while let Some((idx, result)) = stream.next().await {
+            // it's OK to just return the error because Device doesn't proceed after emitting
+            // an error
+            let recording = result?;
+
+            let processed = process_recording(recording);
+            if let Some(changepoint_us) = processed.changepoint_us {
+                let changepoint = f64::from(changepoint_us) / 1000f64;
+                progress.suspend(|| println!("{changepoint:.2}"));
+            } else {
+                progress.suspend(|| {
+                    eprintln!("No change detected");
+                });
+            }
+
+            progress.inc(1);
         }
 
         Ok(())

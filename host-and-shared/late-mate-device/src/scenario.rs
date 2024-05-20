@@ -183,7 +183,7 @@ pub fn to_device_scenario(
 
 // note that it's different from shared comms stuff becauase it has the actual report,
 // not just the ID
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub enum Event {
     LightLevel(u32),
     HidReport(hid::HidReport),
@@ -200,7 +200,7 @@ impl Event {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct Moment {
     pub microsecond: u32,
     pub event: Event,
@@ -216,11 +216,17 @@ impl Moment {
             event: Event::from_device(device_moment.event, hid_index),
         }
     }
+
+    pub fn to_light_level(&self) -> Option<u32> {
+        match self.event {
+            Event::LightLevel(l) => Some(l),
+            Event::HidReport(_) => None,
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct Recording {
     pub max_light_level: u32,
     pub timeline: Vec<Moment>,
-    // todo: enrich with statistics
 }

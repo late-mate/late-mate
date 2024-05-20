@@ -394,12 +394,9 @@ fn find_changepoint(light_levels: &[(u32, u32)]) -> Option<u32> {
             (light_level.min(min), light_level.max(max))
         });
 
-    // dbg!(end_min, end_max);
-
     let change_detect_gap = (start_max - start_min) * change_detect_gap_multiplier;
 
     if !(end_min > (start_max + change_detect_gap) || start_min > (end_max + change_detect_gap)) {
-        // println!("no change detected");
         return None;
     }
 
@@ -430,7 +427,6 @@ fn find_changepoint(light_levels: &[(u32, u32)]) -> Option<u32> {
             }
         })
     };
-    // dbg!(change_point);
 
     Some(change_point.expect("the signal must cross the threshold given the above"))
 }
