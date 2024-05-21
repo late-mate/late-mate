@@ -14,6 +14,7 @@ pub enum MouseButton {
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(default, deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
 pub struct MouseReport {
     // see this discussion https://github.com/Aleph-Alpha/ts-rs/issues/175
     // for an explanation of this pattern
@@ -154,6 +155,7 @@ pub enum KeyboardKey {
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 #[serde(default, deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
 pub struct KeyboardReport {
     #[ts(optional, as = "Option<Vec<KeyboardModifier>>")]
     pub modifiers: Vec<KeyboardModifier>,
@@ -163,7 +165,7 @@ pub struct KeyboardReport {
     pub pressed_keys: Vec<KeyboardKey>,
 }
 
-impl From<&KeyboardReport> for late_mate_shared::comms::hid::KeyboardReport {
+impl From<&KeyboardReport> for comms::hid::KeyboardReport {
     fn from(value: &KeyboardReport) -> Self {
         let mut byte_modifier = 0u8;
         for modifier in &value.modifiers {
@@ -175,7 +177,7 @@ impl From<&KeyboardReport> for late_mate_shared::comms::hid::KeyboardReport {
             byte_keycodes[i] = *keycode as u8;
         }
 
-        late_mate_shared::comms::hid::KeyboardReport {
+        comms::hid::KeyboardReport {
             modifier: byte_modifier,
             keycodes: byte_keycodes,
         }

@@ -13,6 +13,8 @@ pub enum ValidationError {
     ReverseTooLarge(usize),
     #[error("Total duration of the test section must be less than {MAX_SCENARIO_DURATION_MS}ms, got {ms}ms")]
     TestTooLong { ms: u64 },
+    #[error("Number of repeats must be larger than 0")]
+    ZeroRepeats,
     #[error("Test section must include start_timing")]
     NoStartTiming,
     #[error("Test section must include only one start_timing")]
@@ -76,6 +78,10 @@ impl Scenario {
     }
 
     pub fn validate(&self) -> Result<(), ValidationError> {
+        if self.repeats == 0 {
+            return Err(ValidationError::ZeroRepeats);
+        }
+
         if self.test.len() > MAX_SCENARIO_LENGTH {
             return Err(ValidationError::TestTooLarge(self.test.len()));
         }
@@ -184,6 +190,7 @@ pub fn to_device_scenario(
 // note that it's different from shared comms stuff becauase it has the actual report,
 // not just the ID
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Event {
     LightLevel(u32),
     HidReport(hid::HidReport),

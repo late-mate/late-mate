@@ -59,7 +59,7 @@ pub async fn run(device: Device, interface: IpAddr, port: u16) -> anyhow::Result
     let socket_addr = SocketAddr::from((interface, port));
     let listener = tokio::net::TcpListener::bind(&socket_addr)
         .await
-        .context(format!("Couldn't bind on {socket_addr}"))?;
+        .with_context(|| format!("Couldn't bind on {socket_addr}"))?;
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(
         listener,
@@ -95,7 +95,7 @@ async fn handle_socket(
     socket
         .send(Message::Ping(vec![1, 3, 3, 7]))
         .await
-        .context(format!("Could not send ping to {who}"))?;
+        .with_context(|| format!("Could not send ping to {who}"))?;
     println!("Pinged {who}");
 
     let (bg_streaming_enabled_sender, mut bg_streaming_enabled_receiver) = watch::channel(false);
@@ -190,23 +190,23 @@ async fn handle_socket(
             send_task.abort();
             recv_task.abort();
             dbg!(bg_light_join_result)
-                .context(format!("Panic in a bg light level task of {who}"))?
-                .context(format!("Error in a bg light level task of {who}"))?;
+                .with_context(|| format!("Panic in a bg light level task of {who}"))?
+                .with_context(|| format!("Error in a bg light level task of {who}"))?;
         },
         send_join_result = &mut send_task => {
             bg_light_task.abort();
             recv_task.abort();
             dbg!(send_join_result)
-                .context(format!("Panic in a websocket send task of {who}"))?
-                .context(format!("Error in a websocket send task of {who}"))?;
+                .with_context(|| format!("Panic in a websocket send task of {who}"))?
+                .with_context(|| format!("Error in a websocket send task of {who}"))?;
         },
         recv_join_result = &mut recv_task => {
             bg_light_task.abort();
             send_task.abort();
             // recv_join_result is swallowed here somehow?
             dbg!(recv_join_result)
-                .context(format!("Panic in a websocket recv task of {who}"))?
-                .context(format!("Error in a websocket recv task of {who}"))?;
+                .with_context(|| format!("Panic in a websocket recv task of {who}"))?
+                .with_context(|| format!("Error in a websocket recv task of {who}"))?;
         }
     }
 

@@ -26,3 +26,5 @@ ts-rs = "8.1.0"
 late-mate-device = { path = "../late-mate-device" }
 toml = { version = "0.8.13", default-features = false, features = ["parse"] }
 indicatif = "0.17.8"
+chrono = { version = "0.4.38", default-features = false, features = ["std", "now", "clock"] }
+csv = "1.3.0"

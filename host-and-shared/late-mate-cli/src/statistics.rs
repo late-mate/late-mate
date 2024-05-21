@@ -1,9 +1,7 @@
 use late_mate_device::scenario::{Moment, Recording};
 
-// this is recorded
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug)]
 pub struct ProcessedRecording {
-    #[serde(flatten)]
     pub recording: Recording,
     pub changepoint_us: Option<u32>,
 }

@@ -20,7 +20,7 @@ ms = 200
 type = "keyboard"
 pressed_keys = ["backspace"]
 
-[[test]]
+[[revert]]
 type = "keyboard"
 
 [[revert]]
