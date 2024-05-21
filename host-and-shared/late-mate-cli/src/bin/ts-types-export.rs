@@ -1,6 +1,6 @@
 use clap::Parser;
 use std::path::PathBuf;
-// use ts_rs::TS;
+use ts_rs::TS;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -11,7 +11,9 @@ struct Cli {
 }
 
 fn main() -> anyhow::Result<()> {
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
+
+    late_mate_device::hid::HidReport::export_all_to(cli.directory)?;
 
     // late_mate_cli::server::api::ClientToServer::export_all_to(&cli.directory)?;
     // late_mate_cli::server::api::ServerToClient::export_all_to(&cli.directory)?;

@@ -1,7 +1,12 @@
-mod reset_to_firmware_update;
-mod run_scenario;
+mod device;
+mod hid;
+mod scenario;
 mod send_hid_report;
-mod status;
+
+use device::Device as CliDevice;
+use hid::Hid as CliHid;
+use scenario::Scenario as CliScenario;
+
 use late_mate_device::Device;
 
 #[derive(clap::Parser)]
@@ -11,10 +16,18 @@ pub struct Cli {
     pub command: Command,
 }
 
-#[derive(clap::Subcommand, Debug)]
+#[derive(Debug, clap::Subcommand)]
 pub enum Command {
-    /// Request status from the Late Mate device
-    Status(status::Args),
+    /// Everything related to the device itself.
+    #[command(subcommand)]
+    Device(CliDevice),
+    /// Latency testing is done with scenarios. To start writing scenarios, look at the
+    /// `examples` subcommand here.
+    #[command(subcommand)]
+    Scenario(CliScenario),
+    /// If you want to just send a HID report without any timing, you can use this subcommand.
+    #[command(subcommand)]
+    Hid(CliHid),
     // todo
     // /// Stream current light level to console output (throttled down to 120hz)
     // MonitorBackground,
@@ -26,21 +39,17 @@ pub enum Command {
 
     //     port: u16,
     // },
-    /// Send HID reports to the device. Accepts JSON-encoded HID report structure(s)
-    SendHidReport(send_hid_report::Args),
-    /// Execute a latency testing scenario
-    RunScenario(run_scenario::Args),
-    /// Request device reset to firmware update mode
-    ResetToFirmwareUpdate(reset_to_firmware_update::Args),
 }
 
 impl Command {
     pub async fn run(self, device: &mut Device) -> anyhow::Result<()> {
         match self {
-            Command::Status(cmd) => cmd.run(device).await,
-            Command::ResetToFirmwareUpdate(cmd) => cmd.run(device).await,
-            Command::SendHidReport(cmd) => cmd.run(device).await,
-            Command::RunScenario(cmd) => cmd.run(device).await,
+            Command::Device(CliDevice::Status(cmd)) => cmd.run(device).await,
+            Command::Device(CliDevice::FirmwareUpdate(cmd)) => cmd.run(device).await,
+            Command::Scenario(CliScenario::Run(cmd)) => cmd.run(device).await,
+            Command::Scenario(CliScenario::Example(cmd)) => cmd.run(device).await,
+            Command::Hid(CliHid::Send(cmd)) => cmd.run(device).await,
+            Command::Hid(CliHid::ShowType(cmd)) => cmd.run(device).await,
         }
     }
 }

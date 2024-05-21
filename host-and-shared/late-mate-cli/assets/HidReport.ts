@@ -1,0 +1,116 @@
+export type KeyboardKey =
+  | "a"
+  | "b"
+  | "c"
+  | "d"
+  | "e"
+  | "f"
+  | "g"
+  | "h"
+  | "i"
+  | "j"
+  | "k"
+  | "l"
+  | "m"
+  | "n"
+  | "o"
+  | "p"
+  | "q"
+  | "r"
+  | "s"
+  | "t"
+  | "u"
+  | "v"
+  | "w"
+  | "x"
+  | "y"
+  | "z"
+  | "one_exclamation"
+  | "two_at"
+  | "three_hash"
+  | "four_dollar"
+  | "five_percent"
+  | "six_caret"
+  | "seven_ampersand"
+  | "eight_asterisk"
+  | "nine_open_parens"
+  | "zero_close_parens"
+  | "enter"
+  | "escape"
+  | "backspace"
+  | "tab"
+  | "spacebar"
+  | "dash_underscore"
+  | "equal_plus"
+  | "open_bracket_brace"
+  | "close_bracket_brace"
+  | "backslash_bar"
+  | "non_us_hash"
+  | "semi_colon"
+  | "single_double_quote"
+  | "backtick_tilde"
+  | "comma_less"
+  | "period_greater"
+  | "slash_question"
+  | "caps_lock"
+  | "f1"
+  | "f2"
+  | "f3"
+  | "f4"
+  | "f5"
+  | "f6"
+  | "f7"
+  | "f8"
+  | "f9"
+  | "f10"
+  | "f11"
+  | "f12"
+  | "print_screen"
+  | "scroll_lock"
+  | "pause"
+  | "insert"
+  | "home"
+  | "page_up"
+  | "delete"
+  | "end"
+  | "page_down"
+  | "right"
+  | "left"
+  | "down"
+  | "up"
+  | "mute"
+  | "volume_up"
+  | "volume_down";
+
+export type KeyboardModifier =
+  | "l_ctrl"
+  | "l_shift"
+  | "l_alt"
+  | "l_meta"
+  | "r_ctrl"
+  | "r_shift"
+  | "r_alt"
+  | "r_meta";
+
+export type KeyboardReport = {
+  modifiers?: Array<KeyboardModifier>;
+  pressed_keys?: Array<KeyboardKey>;
+};
+
+export type MouseButton = "left" | "right" | "middle";
+
+export type MouseReport = {
+  buttons?: Array<MouseButton>;
+  x?: number;
+  y?: number;
+  wheel?: number;
+  pan?: number;
+};
+
+export type HidReport =
+  | ({
+      type: "mouse";
+    } & MouseReport)
+  | ({
+      type: "keyboard";
+    } & KeyboardReport);

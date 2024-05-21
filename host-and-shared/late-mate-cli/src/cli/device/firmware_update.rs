@@ -1,6 +1,6 @@
 use late_mate_device::Device;
 
-#[derive(clap::Args, Debug)]
+#[derive(Debug, clap::Args)]
 pub struct Args {}
 
 impl Args {

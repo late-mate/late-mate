@@ -1,21 +1,33 @@
+# The scenario will be repeated this many times
 repeats = 1
+
+# Delay between scenario runs is randomised between those two values.
+# It's important to keep it randomised to avoid aliasing with frames and arbitrary timers.
 delay_between_ms = [200, 300]
 
+# You can have HID reports before start_timing, for example if you want to test
+# mouse movements.
 [[test]]
 type = "start_timing"
 
+# type="keyboard" and type="mouse" are HID reports. You can find all possible keys
+# by looking at the HID report type in the CLI (look at the `hid` subcommand).
 [[test]]
 type = "keyboard"
 pressed_keys = ["a"]
 
-# keyboard events are stateful, so it's important to explicitly release the key
+# Keyboard events are stateful, so it's important to explicitly release the key.
 [[test]]
 type = "keyboard"
 
+# Late Mate stops recording light levels when scenario ends, so it's important
+# to add an explicit wait here.
 [[test]]
 type = "wait"
 ms = 200
 
+# Revert section is untimed and can't have start_timing in it. Its purpose
+# is to revert the system to the original state before the next run.
 [[revert]]
 type = "keyboard"
 pressed_keys = ["backspace"]

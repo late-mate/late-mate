@@ -1,8 +1,8 @@
 mod file_output;
 
-use crate::cli::run_scenario::file_output::{FileOutput, FileOutputKind};
 use crate::statistics::process_recording;
 use anyhow::{anyhow, Context};
+use file_output::{FileOutput, FileOutputKind};
 use futures::StreamExt;
 use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
 use late_mate_device::scenario::{Recording, Scenario};
@@ -11,23 +11,23 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-#[derive(clap::Args, Debug)]
+#[derive(Debug, clap::Args)]
 pub struct Args {
     /// Path to a .json or .toml with a scenario to run. Set to "-" to read from STDIN
     pub input: String,
 
     /// Name of this test run. It is used for a subdirectory to store results in.
-    /// If not provided, current date and time are used
+    /// If not provided, current date and time are used.
     #[arg(long)]
     pub name: Option<String>,
 
     /// Path to a directory where a subdirectory with JSON results will be created.
-    /// Can be used simultaneously with other output options
+    /// Can be used simultaneously with other output options.
     #[arg(long)]
     output_json_dir: Option<PathBuf>,
 
     /// Path to a directory where a subdirectory with CSV results will be created.
-    /// Can be used simultaneously with other output options
+    /// Can be used simultaneously with other output options.
     #[arg(long)]
     output_csv_dir: Option<PathBuf>,
 
