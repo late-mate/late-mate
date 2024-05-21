@@ -152,12 +152,8 @@ impl Args {
         Ok((scenario, file_outputs))
     }
 
-    fn output_init(&self, scenario: &Scenario, progress: &ProgressBar) {
-        if scenario.repeats > 1 {
-            progress.suspend(|| eprintln!("Input latencies (in milliseconds):"));
-        } else {
-            progress.suspend(|| eprintln!("Input latency (in milliseconds):"));
-        }
+    fn output_init(&self, progress: &ProgressBar) {
+        progress.suspend(|| eprintln!("Input latency (in milliseconds):"));
     }
 
     async fn output_step(
@@ -179,7 +175,7 @@ impl Args {
 
         for file_output in file_outputs {
             file_output
-                .output_run(scenario, idx, &processed)
+                .output_run(scenario, idx, processed)
                 .await
                 .context("Error processing an output step")?;
         }
@@ -200,7 +196,7 @@ impl Args {
             .context("Scenario validation error")?
             .enumerate();
 
-        self.output_init(&scenario, &progress);
+        self.output_init(&progress);
 
         let mut changepoints = Vec::with_capacity(usize::from(scenario.repeats));
 
@@ -272,18 +268,6 @@ impl Args {
                 );
             }
         }
-        // if let Some(stats) = final_stats {
-        //     eprintln!("Scenario complete, results:");
-        //     if stats.has_missing {
-        //         eprintln!(
-        //             "  {}: some latency measurements failed, statistics can be skewed",
-        //             style("Warning").red()
-        //         )
-        //     }
-        //     eprintln!("  ")
-        // } else if !changepoints.is_empty() {
-        //     // todo: this implicit detection is not great
-        // }
 
         Ok(())
     }
