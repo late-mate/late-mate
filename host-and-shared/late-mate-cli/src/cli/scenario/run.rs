@@ -1,11 +1,12 @@
 mod file_output;
 
-use crate::statistics::process_recording;
+use crate::statistics::{process_changepoints, process_recording, FinalStats, ProcessedRecording};
 use anyhow::{anyhow, Context};
+use console::style;
 use file_output::{FileOutput, FileOutputKind};
 use futures::StreamExt;
 use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
-use late_mate_device::scenario::{Recording, Scenario};
+use late_mate_device::scenario::Scenario;
 use late_mate_device::Device;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -94,7 +95,7 @@ fn get_progressbar(scenario: &Scenario) -> ProgressBar {
     // Note that I can't use the spinner if I want to minimise load during the test
     progress.set_style(
         ProgressStyle::with_template(
-            "{prefix:.bold}  [ {bar:40.cyan} ] {pos:>3}/{len:3} [ETA: {eta}]",
+            "{prefix:.bold}  [ {bar:40.green/dim} ] {pos:>3}/{len:3} [ETA: {eta}]",
         )
         .expect("Progress bar template must be correct")
         .with_key(
@@ -155,7 +156,7 @@ impl Args {
         if scenario.repeats > 1 {
             progress.suspend(|| eprintln!("Input latencies (in milliseconds):"));
         } else {
-            progress.suspend(|| eprintln!("Latency (in milliseconds):"));
+            progress.suspend(|| eprintln!("Input latency (in milliseconds):"));
         }
     }
 
@@ -165,10 +166,8 @@ impl Args {
         progress: &ProgressBar,
         file_outputs: &[FileOutput],
         idx: usize,
-        recording: Recording,
+        processed: &ProcessedRecording,
     ) -> anyhow::Result<()> {
-        let processed = process_recording(recording);
-
         if let Some(changepoint_us) = processed.changepoint_us {
             let changepoint = f64::from(changepoint_us) / 1000f64;
             progress.suspend(|| println!("{changepoint:.1}"));
@@ -203,13 +202,88 @@ impl Args {
 
         self.output_init(&scenario, &progress);
 
+        let mut changepoints = Vec::with_capacity(usize::from(scenario.repeats));
+
         while let Some((idx, result)) = stream.next().await {
             // it's OK to just return the error because Device doesn't proceed after emitting
             // an error
             let recording = result?;
-            self.output_step(&scenario, &progress, &file_outputs, idx, recording)
+            let processed = process_recording(recording);
+            self.output_step(&scenario, &progress, &file_outputs, idx, &processed)
                 .await?;
+            changepoints.push(processed.changepoint_us);
         }
+
+        progress.finish_and_clear();
+
+        match process_changepoints(&changepoints) {
+            FinalStats::NoRuns => {}
+            FinalStats::NoSuccesses => {
+                eprintln!(
+                    "{}, {}",
+                    style("Scenario complete").bold(),
+                    style("no succesful measurements").bold().yellow()
+                );
+            }
+            FinalStats::SingleMeasurement { latency } => {
+                eprintln!(
+                    "{}, measured latency is {}",
+                    style("Scenario complete").bold(),
+                    style(format!("{latency:.01}ms")).green().bold()
+                );
+            }
+            FinalStats::MultipleMeasurements {
+                has_missing,
+                n_samples,
+                mean,
+                stddev,
+                median,
+                max,
+                min,
+            } => {
+                eprintln!("{}, results:", style("Scenario complete").bold(),);
+                if has_missing {
+                    eprintln!(
+                        "  {}: some measurements failed, statistics can be skewed",
+                        style("Warning").yellow()
+                    )
+                }
+                eprintln!(
+                    "  Samples:                 {}",
+                    style(format!("{n_samples:<6}")).dim()
+                );
+                eprintln!(
+                    "  Latency ({} ± {}):    {} ± {} ms",
+                    style("mean").green().bold(),
+                    style("σ").green(),
+                    style(format!("{mean:>6.01}")).green().bold(),
+                    style(format!("{stddev:<6.01}")).green(),
+                );
+                eprintln!(
+                    "  Median:                {} ms",
+                    style(format!("{median:>6.01}")).green().dim(),
+                );
+                eprintln!(
+                    "  Range ({} … {}):     {} … {} ms",
+                    style("min").cyan(),
+                    style("max").magenta(),
+                    style(format!("{min:>6.01}")).cyan(),
+                    style(format!("{max:<6.01}")).magenta(),
+                );
+            }
+        }
+        // if let Some(stats) = final_stats {
+        //     eprintln!("Scenario complete, results:");
+        //     if stats.has_missing {
+        //         eprintln!(
+        //             "  {}: some latency measurements failed, statistics can be skewed",
+        //             style("Warning").red()
+        //         )
+        //     }
+        //     eprintln!("  ")
+        // } else if !changepoints.is_empty() {
+        //     // todo: this implicit detection is not great
+        // }
 
         Ok(())
     }

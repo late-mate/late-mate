@@ -83,3 +83,72 @@ pub fn process_recording(recording: Recording) -> ProcessedRecording {
         changepoint_us,
     }
 }
+
+#[derive(Debug)]
+pub enum FinalStats {
+    NoRuns,
+    NoSuccesses,
+    SingleMeasurement {
+        latency: f64,
+    },
+    MultipleMeasurements {
+        has_missing: bool,
+        n_samples: usize,
+        mean: f64,
+        stddev: f64,
+        median: f64,
+        max: f64,
+        min: f64,
+    },
+}
+
+pub fn process_changepoints(values: &[Option<u32>]) -> FinalStats {
+    if values.is_empty() {
+        return FinalStats::NoRuns;
+    }
+
+    let millis = values
+        .iter()
+        .filter_map(|x| x.map(|us| f64::from(us) / 1000f64))
+        .collect::<Vec<_>>();
+
+    if millis.is_empty() {
+        return FinalStats::NoSuccesses;
+    }
+
+    if millis.len() == 1 {
+        return FinalStats::SingleMeasurement { latency: millis[0] };
+    }
+
+    let has_missing = values.len() != millis.len();
+    let n = millis.len();
+    let mean = statistical::mean(&millis);
+    let stddev = statistical::standard_deviation(&millis, Some(mean));
+    let median = statistical::median(&millis);
+    let max = millis
+        .iter()
+        .max_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("There must be no NaNs among changepoints")
+        })
+        .expect("Floats must not be empty at this point")
+        .to_owned();
+    let min = millis
+        .iter()
+        .min_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("There must be no NaNs among changepoints")
+        })
+        .expect("Floats must not be empty at this point")
+        .to_owned();
+
+    FinalStats::MultipleMeasurements {
+        has_missing,
+        n_samples: n,
+        mean,
+        stddev,
+        median,
+        max,
+        min,
+    }
+}
