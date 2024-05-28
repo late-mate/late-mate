@@ -7,21 +7,21 @@ This is how it works. We take an app, like Kitty. Increase font size to some unr
 
 Then we make our device pretend it’s a keyboard and produce USB events. It first “types” Spacebar and then Backspace:
 
-![](update-003/kitty.webp)
+![](../003/kitty.webp)
 
 Then we position Late Mate Prototype Mark I (tm) measuring device on top of it:
 
-![](update-003/position.webp)
+![](../003/position.webp)
 
 How? I’m glad you asked. Currently, like this:
 
-![](update-003/setup.jpeg)
+![](../003/setup.jpeg)
 
 Yes, it looks horrible. But it’s also surprisingly convenient! Until the first cracked screen, that is. So we will probably not include the clamp in the package.
 
 Finally, we observe the brightness change. This gets us a graph like this:
 
-![](update-003/dell_normal.webp) 
+![](../003/dell_normal.webp) 
 
 Isn’t it beautiful? How smooth this curve is?
 
@@ -29,7 +29,7 @@ Don’t mind the UI, it’s a temporary quick-and-dirty tool (still better than 
 
 Here, let me annotate it for you:
 
-![](update-003/graph_one.webp) 
+![](../003/graph_one.webp) 
 
 Already, we can say a few things:
 
@@ -38,13 +38,13 @@ Already, we can say a few things:
 
 For funsies, I can turn on “Fast” response mode in the display’s settings and we can see how it starts to “overshoot”:
 
-![](update-003/dell_fast.webp)
+![](../003/dell_fast.webp)
 
 Without improving latency much. Gives you a hell lot of artifacts, though. But now I can see them with science!
 
 From here, we just do it a bunch of times, like 100, and we get a latency distribution graph! Like this:
 
-![](update-003/dell_kitty_top.webp)
+![](../003/dell_kitty_top.webp)
 
 From it you can tell that a combination of Kitty and Dell U3224KB react to keypress from 33 to 53 ms, averaging at 43 ms.
 
@@ -52,7 +52,7 @@ This is full end-to-end, so it includes USB polling, app code, drawing, composit
 
 Now to the actual results. We did a bunch of measurements and this is what we found (click to enlarge):
 
-[![](update-003/measurements.webp)](update-003/measurements.webp)
+[![](../003/measurements.webp)](../003/measurements.webp)
 
 Interesting observations:
 
@@ -66,15 +66,15 @@ Interesting observations:
 
 Another thing we learned is that the Macbook Pro's built-in XDR Display seems to modulate brightness. It’s not as smooth and constant as I get on my Dell, instead, it’s going up and down roughly every ms (or more often, we only sample at 2kHz):
 
-![](update-003/400_nits.webp)
+![](../003/400_nits.webp)
 
 Amplitude becomes smaller when you push brightness higher. The picture above was at ~400 nits, below is the full 1600 nits:
 
-![](update-003/1600_nits.webp)
+![](../003/1600_nits.webp)
 
 But of course, you don’t run UI at 1600 nits. That presents us with a bit of a problem: how do you find a signal if your noise is like this:
 
-![](update-003/noise.jpeg)
+![](../003/noise.jpeg)
 
 (it’s hard to see but there’s a keypress in there).
 
