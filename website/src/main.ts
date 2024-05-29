@@ -1,4 +1,4 @@
-import { assertEl, elById } from './asserts.ts';
+import { assertDefined, assertEl, elById } from './asserts.ts';
 
 const textarea = elById('textarea', 'latency-demo-textarea');
 const textareaWrap = elById('div', 'latency-demo-textarea-wrap');
@@ -82,3 +82,43 @@ delaySlider.addEventListener('input', (evt) => {
 });
 
 syncDelayValue();
+
+const originalColour = '#f2f2f2';
+const highlightColour = 'oklch(62% 0.4 220)';
+
+const explanationObject = elById('object', 'explanation-svg');
+
+const blocks = [
+  ['explanation-1', 'arrow-1'],
+  ['explanation-2', 'arrow-2'],
+  ['explanation-3', 'arrow-3'],
+  ['explanation-4', 'arrow-4'],
+];
+
+blocks.forEach(([explanationId, arrowClass]) => {
+  const explanation = elById('li', explanationId);
+
+  explanation.addEventListener('mouseover', () => {
+    // todo: set this up onload
+    const explanationSvg = assertDefined(explanationObject.contentDocument);
+    for (const el of explanationSvg.querySelectorAll(
+      `.${arrowClass}.tostroke`,
+    )) {
+      el.setAttribute('stroke', highlightColour);
+    }
+    for (const el of explanationSvg.querySelectorAll(`.${arrowClass}.tofill`)) {
+      el.setAttribute('fill', highlightColour);
+    }
+  });
+  explanation.addEventListener('mouseout', () => {
+    const explanationSvg = assertDefined(explanationObject.contentDocument);
+    for (const el of explanationSvg.querySelectorAll(
+      `.${arrowClass}.tostroke`,
+    )) {
+      el.setAttribute('stroke', originalColour);
+    }
+    for (const el of explanationSvg.querySelectorAll(`.${arrowClass}.tofill`)) {
+      el.setAttribute('fill', originalColour);
+    }
+  });
+});

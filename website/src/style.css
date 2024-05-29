@@ -6,8 +6,14 @@ h3,
 h4,
 p,
 ul,
+ol,
 li {
   margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
 }
 
 :root {
@@ -178,12 +184,16 @@ body {
   }
 }
 
-.measure {
+.cant-measure {
   .header {
     font-size: 1.8rem;
     font-weight: bold;
     margin: 3rem 0;
     text-align: center;
+
+    .red {
+      color: var(--c-very-red);
+    }
 
     .blue {
       color: var(--c-very-blue);
@@ -221,4 +231,118 @@ body {
   width: var(--width);
   margin: 0 auto;
   padding: 0 2rem;
+}
+
+.first-video {
+  margin-top: 4rem;
+  margin-bottom: 4rem;
+
+  display: flex;
+  gap: 2em;
+  align-items: center;
+
+  h2 {
+    font-size: 2.7rem;
+    width: 40%;
+
+    .shadow {
+      transform: translate(-1px, -2px);
+      filter: drop-shadow(1px 2px 0 var(--c-very-blue));
+    }
+
+    .green {
+      color: var(--c-very-green);
+    }
+  }
+
+  .video {
+    background-color: black;
+    width: 60%;
+    aspect-ratio: 16/9;
+
+    border-radius: var(--radius);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+}
+
+.how-it-works {
+  margin-top: 3rem;
+  padding: 2rem;
+
+  background-color: var(--c-hero-bg);
+  color: var(--c-hero-text);
+
+  border-radius: var(--radius);
+
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+
+  .header {
+    font-weight: normal;
+    font-size: 2.7rem;
+
+    .shadow {
+      transform: translate(-1px, -2px);
+      filter: drop-shadow(1px 2px 0 var(--c-very-blue));
+    }
+  }
+
+  .content {
+    display: flex;
+    gap: 3em;
+
+    .list {
+      width: 60%;
+
+      opacity: 0.9;
+
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+
+      list-style: none;
+      counter-reset: explanation-list;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+
+        &::before {
+          counter-increment: explanation-list;
+          content: counter(explanation-list);
+
+          display: block;
+          font-size: 3rem;
+
+          width: 2rem;
+          flex-shrink: 0;
+
+          text-align: center;
+
+          opacity: 0.5;
+        }
+
+        &:hover::before {
+          color: oklch(62% 0.4 220);
+          opacity: 1;
+        }
+
+        p {
+          margin: 0.3rem 0;
+        }
+      }
+    }
+
+    .image {
+      width: 40%;
+
+      opacity: 0.9;
+    }
+  }
 }

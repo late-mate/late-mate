@@ -45,12 +45,6 @@
     <main>
       <section class="hero">
         <h1 class="title">Late Mate</h1>
-        <!--<p class="text-2xl font-bold">
-          Laggy computers
-          <span class="text-lmhlred">suck</span>.<br />
-          We <span class="text-lmhlblue">measure</span>.<br />
-          You <span class="text-lmhlgreen">fix</span>.
-        </p>-->
         <p class="subtitle">
           Snappy inputs <span class="green">slap</span><br />
           Input delay <span class="red">sucks</span>
@@ -108,16 +102,17 @@
         </div>
       </section>
 
-      <section class="section-sized measure">
+      <section class="section-sized cant-measure">
         <h2 class="header">
-          You can't fix what you can't <span class="blue">measure</span>.
+          You can't fix what you <span class="red">can't</span>
+          <span class="blue">measure</span>.
         </h2>
 
         <ul class="usecases">
           <li>
             <h3 class="customer">Developer?</h3>
             <p class="text">
-              You can't eyeball latency because you get used to it. You
+              You can't eyeball latency, you get used to it. You
               <em>will</em> get used to your software getting less and less
               snappy. Just look at…
               <span title="Microsoft Teams">everything</span>, really.
@@ -126,8 +121,9 @@
           <li>
             <h3 class="customer">Competitive gamer?</h3>
             <p class="text">
-              Faster response = you see them earlier. But how do you know if
-              borderless windowed or fullscreen is faster?
+              Faster response = you see them first. But how do you know if
+              borderless windowed or fullscreen is faster? How do you get to the
+              best setup?
             </p>
           </li>
           <li>
@@ -142,9 +138,85 @@
         </ul>
       </section>
 
-      <section class="section-sized">
-        <h2>Late Mate measures end-to-end input delay</h2>
-        <p>Explain the concept</p>
+      <section class="section-sized first-video">
+        <h2>
+          With <span class="shadow">Late&nbsp;Mate</span> you&nbsp;<span
+            class="green"
+            >can</span
+          >.
+        </h2>
+        <div class="video"><p>[VIDEO WILL BE HERE]</p></div>
+      </section>
+
+      <section class="section-sized how-it-works">
+        <h2 class="header">
+          How <span class="shadow">Late&nbsp;Mate</span> works
+        </h2>
+        <div class="content">
+          <ol class="list">
+            <li id="explanation-1">
+              <div class="explanation-content">
+                <h3>Simulate the input</h3>
+                <p>
+                  Late Mate takes a testing scenario and executes it, pretending
+                  to be a keyboard and a mouse. Late Mate runs with 1kHz polling
+                  rate, the highest available for USB&nbsp;2.0 devices.
+                </p>
+              </div>
+            </li>
+            <li id="explanation-2">
+              <div class="explanation-content">
+                <h3>Your computer does the work</h3>
+                <p>
+                  From USB drivers to software to the kernel to the compositor,
+                  your computer works hard to change pixels on the screen.
+                </p>
+              </div>
+            </li>
+            <li id="explanation-3">
+              <div class="explanation-content">
+                <h3>Detect the screen change</h3>
+                <p>
+                  Late Mate device looks at a patch of your screen, waiting for
+                  a brightness change. In 0.5ms Late Mate knows that the
+                  computer started reacting to the input.
+                </p>
+              </div>
+            </li>
+            <li id="explanation-4">
+              <div class="explanation-content">
+                <h3>Time the difference</h3>
+                <p>
+                  All time measurements are done in the device, no matter what
+                  you computer's clock does. The results are exported to the
+                  computer.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <div class="image">
+            <object
+              id="explanation-svg"
+              data="concept.svg"
+              type="image/svg+xml"
+              width="100%"
+            ></object>
+          </div>
+        </div>
+      </section>
+
+      <!--<p class="text-2xl font-bold">
+          <p>Laggy computers <span class="text-lmhlred">suck</span>.<br />
+          Late Mate <span class="text-lmhlblue">measures</span>.<br />
+          You <span class="text-lmhlgreen">fix</span>.
+        </p>-->
+
+      <hr />
+      <p>Everything below is work in progress</p>
+      <hr />
+
+      <section class="section-sized fix-cta">
+        <div class="title"></div>
       </section>
 
       <section class="section-sized">
@@ -154,17 +226,17 @@
 
       <section class="section-sized">
         <h2>The plan</h2>
-        <p>Video</p>
+        <p>Foo</p>
       </section>
 
       <section class="section-sized">
         <h2>Who's behind this</h2>
-        <p>Video</p>
+        <p>Foo</p>
       </section>
 
       <section class="section-sized">
         <h2>Previous updates</h2>
-        <p>Video</p>
+        <p>Foo</p>
       </section>
 
       <h2>The latency problem</h2>

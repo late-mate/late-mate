@@ -841,9 +841,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"late-mate-frontend@workspace:.":
+"late-mate-website@workspace:.":
   version: 0.0.0-use.local
-  resolution: "late-mate-frontend@workspace:."
+  resolution: "late-mate-website@workspace:."
   dependencies:
     autoprefixer: "npm:^10.4.19"
     modern-normalize: "npm:^2.0.0"
