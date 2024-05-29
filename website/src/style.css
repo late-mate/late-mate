@@ -17,7 +17,7 @@ ol {
 }
 
 :root {
-  --width: 70rem;
+  --width: 64rem;
   --c-main-bg: #fff;
   --c-hero-bg: oklch(23.4% 0.047 302.13);
   --c-hero-text: #fff;
@@ -26,25 +26,28 @@ ol {
     Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
 
   --c-very-red: oklch(88% 0.4 27);
-  --c-very-green: oklch(88% 0.4 142);
+  --c-very-green: oklch(80% 0.4 142);
   --c-very-blue: oklch(62% 0.4 220);
 
   --radius: 0.5rem;
+
+  --font-lg: 2rem;
+  --font-xl: 2.7rem;
+  --font-xxl: 4rem;
 }
 
 body {
   background-color: var(--c-main-bg);
 
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .hero {
   width: var(--width);
   margin: 0 auto;
 
-  padding: 4rem 2rem;
-
-  min-height: 24rem;
+  padding: 2rem 2rem;
+  min-height: 23rem;
 
   background-color: var(--c-hero-bg);
   color: var(--c-hero-text);
@@ -67,7 +70,7 @@ body {
 
     writing-mode: vertical-rl;
     rotate: 180deg;
-    font-size: 4rem;
+    font-size: var(--font-xxl);
     line-height: 0.9;
     font-weight: bolder;
 
@@ -78,7 +81,7 @@ body {
   }
 
   .subtitle {
-    font-size: 2.7rem;
+    font-size: var(--font-xl);
     line-height: 1.15;
 
     width: 40%;
@@ -95,13 +98,15 @@ body {
   }
 
   .lead {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     margin: 0 2rem;
-    transform: translateY(-4rem) rotate(-27deg);
+    transform: translateY(-5rem) rotate(-28deg);
 
-    opacity: 0.9;
+    color: oklch(from var(--c-hero-bg) 70% calc(c * 50%) h);
 
     white-space: nowrap;
+
+    flex-grow: 1;
   }
 
   .demo {
@@ -112,6 +117,10 @@ body {
       display: flex;
       gap: 1rem;
       padding-bottom: 1rem;
+
+      input {
+        width: 30%;
+      }
     }
 
     .typing {
@@ -122,9 +131,9 @@ body {
       .sample {
         margin: 0;
         font-style: italic;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
 
-        opacity: 0.8;
+        color: oklch(from var(--c-hero-bg) 95% calc(c * 50%) h);
 
         font-family: var(--f-native-serif), serif;
       }
@@ -145,10 +154,10 @@ body {
 
         &:focus {
           outline: transparent !important;
-          border-bottom: 1px solid oklch(80% 0.047 302.13);
+          border-bottom-color: oklch(from var(--c-hero-bg) 80% c h);
         }
 
-        --placeholder-color: oklch(50% 0.047 302.13);
+        --placeholder-color: oklch(from var(--c-hero-bg) 95% calc(c * 50%) h);
 
         &::-webkit-input-placeholder {
           color: var(--placeholder-color);
@@ -168,7 +177,7 @@ body {
         font-family: var(--f-native-serif), serif;
 
         border: none;
-        border-bottom: 1px solid oklch(30% 0.047 302.13);
+        border-bottom: 1px solid oklch(from var(--c-hero-bg) 30% c h);
 
         font-size: 1.1rem;
         line-height: 1.6;
@@ -186,42 +195,34 @@ body {
 
 .cant-measure {
   .header {
-    font-size: 1.8rem;
+    font-size: var(--font-xl);
     font-weight: bold;
     margin: 3rem 0;
     text-align: center;
-
-    .red {
-      color: var(--c-very-red);
-    }
-
-    .blue {
-      color: var(--c-very-blue);
-    }
   }
 
   .usecases {
     list-style: none;
+
     display: flex;
     gap: 3rem;
-
-    padding: 0;
 
     width: 100%;
 
     h3 {
+      font-size: 1.2rem;
     }
 
     li {
       width: 33%;
 
       .customer {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
         margin-bottom: 0.5rem;
       }
 
       .text {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
       }
     }
   }
@@ -234,6 +235,7 @@ body {
 }
 
 .first-video {
+  /* todo: gap */
   margin-top: 4rem;
   margin-bottom: 4rem;
 
@@ -242,30 +244,21 @@ body {
   align-items: center;
 
   h2 {
-    font-size: 2.7rem;
-    width: 40%;
-
-    .shadow {
-      transform: translate(-1px, -2px);
-      filter: drop-shadow(1px 2px 0 var(--c-very-blue));
-    }
-
-    .green {
-      color: var(--c-very-green);
-    }
+    font-size: var(--font-xl);
+    width: 50%;
   }
 
   .video {
     background-color: black;
-    width: 60%;
+    width: 50%;
     aspect-ratio: 16/9;
-
-    border-radius: var(--radius);
 
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
+
+    transform: rotate(3deg);
   }
 }
 
@@ -280,11 +273,11 @@ body {
 
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.3rem;
 
   .header {
     font-weight: normal;
-    font-size: 2.7rem;
+    font-size: var(--font-xl);
 
     .shadow {
       transform: translate(-1px, -2px);
@@ -299,7 +292,7 @@ body {
     .list {
       width: 60%;
 
-      opacity: 0.9;
+      color: oklch(from var(--c-hero-bg) 95% calc(c * 50%) h);
 
       display: flex;
       flex-direction: column;
@@ -325,12 +318,11 @@ body {
 
           text-align: center;
 
-          opacity: 0.5;
+          color: oklch(from var(--c-hero-bg) 55% calc(c * 50%) h);
         }
 
         &:hover::before {
-          color: oklch(62% 0.4 220);
-          opacity: 1;
+          color: var(--c-very-blue);
         }
 
         p {
@@ -344,5 +336,144 @@ body {
 
       opacity: 0.9;
     }
+  }
+}
+
+.fix-cta {
+  margin-top: 2rem;
+
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+
+  font-size: 1.1rem;
+
+  div {
+    width: 33.3%;
+  }
+
+  .plan {
+    p {
+      font-weight: bold;
+    }
+
+    li {
+      list-style: none;
+    }
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+
+    gap: 1rem;
+
+    input {
+      width: 100%;
+      text-align: center;
+      border: none;
+      border-bottom: 2px solid oklch(from var(--c-hero-bg) 80% c h);
+      padding: 0.33rem;
+      outline: none;
+
+      &:focus {
+        border-bottom-color: oklch(from var(--c-hero-bg) 30% c h);
+      }
+    }
+
+    button {
+      background-color: var(--c-very-blue);
+      border: none;
+      padding: 1rem;
+      border-radius: var(--radius);
+    }
+  }
+}
+
+.highlight {
+  display: inline-block;
+  position: relative;
+
+  &::before {
+    position: absolute;
+    /* todo: used EM!! */
+    top: 0.3rem;
+    right: -0.2rem;
+    bottom: 0.3rem;
+    left: -0.2rem;
+    z-index: -1;
+    content: ' ';
+  }
+
+  &.green::before {
+    background-color: var(--c-very-green);
+  }
+
+  &.red::before {
+    background-color: var(--c-very-red);
+  }
+
+  &.blue::before {
+    background-color: var(--c-very-blue);
+  }
+}
+
+.what-it-is {
+  margin-top: 3rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.3rem;
+
+  a {
+    color: oklch(from var(--c-very-blue) 50% c h);
+    text-wrap: nowrap;
+  }
+
+  .header {
+    font-weight: bold;
+    font-size: var(--font-xl);
+    text-align: center;
+  }
+
+  .content {
+    display: flex;
+    gap: 3em;
+
+    .column {
+      width: 33.3%;
+
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .column-header {
+      text-align: center;
+      font-size: var(--font-lg);
+    }
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  li {
+    display: flex;
+
+    list-style: none;
+    justify-content: space-between;
+
+    border-bottom: 1px solid var(--c-hero-bg);
+
+    :first-child {
+      font-weight: bold;
+    }
+  }
+
+  .cloud {
+    text-align: center;
   }
 }

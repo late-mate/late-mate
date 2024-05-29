@@ -53,50 +53,38 @@
         <p class="lead">See for yourself →</p>
 
         <div class="demo">
-          <div>
-            <!--
-            <label>
-              Typing
-              <input type="radio" name="input-kind" value="typing" checked />
-            </label>
-            <label>
-              Clicking
-              <input type="radio" name="input-kind" value="clicking" />
-            </label>
-            -->
-            <div class="controls">
-              <p>Delay:</p>
+          <div class="controls">
+            <p>Delay:</p>
 
-              <input
-                type="range"
-                id="latency-demo-delay"
-                min="0"
-                max="300"
-                step="60"
-                value="120"
-                aria-label="Input latency slider"
-              />
+            <input
+              type="range"
+              id="latency-demo-delay"
+              min="0"
+              max="300"
+              step="60"
+              value="120"
+              aria-label="Input latency slider"
+            />
 
-              <div id="latency-demo-delay-value"></div>
-            </div>
+            <div id="latency-demo-delay-value"></div>
+          </div>
 
-            <div class="typing">
-              <p class="sample">
-                How poor are they that have not patience!<br />
-                What wound did ever heal but by degrees?<br />
-                Thou know’st we work by wit and not by witchcraft,<br />
-                And wit depends on dilatory time.
-              </p>
-              <div class="input-wrap" id="latency-demo-textarea-wrap">
-                <textarea
-                  placeholder="Type here"
-                  id="latency-demo-textarea"
-                  aria-label="Latency demo textarea"
-                  class="input"
-                  rows="1"
-                  disabled
-                ></textarea>
-              </div>
+          <div class="typing">
+            <p class="sample">
+              How poor are they that have not patience!<br />
+              What wound did ever heal but by degrees?<br />
+              Thou know’st we work by wit and not by witchcraft,<br />
+              And wit depends on dilatory time.
+            </p>
+            <div class="input-wrap" id="latency-demo-textarea-wrap">
+              <textarea
+                placeholder="Type here"
+                id="latency-demo-textarea"
+                aria-label="Latency demo textarea"
+                class="input"
+                rows="1"
+                disabled
+              ></textarea>
             </div>
           </div>
         </div>
@@ -104,35 +92,33 @@
 
       <section class="section-sized cant-measure">
         <h2 class="header">
-          You can't fix what you <span class="red">can't</span>
-          <span class="blue">measure</span>.
+          You can't fix what you <span class="highlight red">can't</span>
+          measure.
         </h2>
 
         <ul class="usecases">
           <li>
             <h3 class="customer">Developer?</h3>
             <p class="text">
-              You can't eyeball latency, you get used to it. You
-              <em>will</em> get used to your software getting less and less
-              snappy. Just look at…
+              You can't eyeball latency. It's too easy to get used to it. Your
+              project <em>will</em> get more and more sluggish. Just look at…
               <span title="Microsoft Teams">everything</span>, really.
             </p>
           </li>
           <li>
             <h3 class="customer">Competitive gamer?</h3>
             <p class="text">
-              Faster response = you see them first. But how do you know if
-              borderless windowed or fullscreen is faster? How do you get to the
-              best setup?
+              Lower latency is an advantage. But how do you know if borderless
+              windowed or fullscreen is faster? How do squeeze the most from
+              your setup?
             </p>
           </li>
           <li>
             <h3 class="customer">Business?</h3>
             <p class="text">
-              Customers can feel when your software is snappy. But you
-              <em>will</em>
-              sacrifice responsiveness if it's not tracked. You can't track what
-              you can't measure.
+              Users can feel when your software is snappy. It feels great! But
+              your teams
+              <em>will</em> sacrifice responsiveness if it's not tracked.
             </p>
           </li>
         </ul>
@@ -140,12 +126,9 @@
 
       <section class="section-sized first-video">
         <h2>
-          With <span class="shadow">Late&nbsp;Mate</span> you&nbsp;<span
-            class="green"
-            >can</span
-          >.
+          With Late&nbsp;Mate you&nbsp;<span class="highlight green">can</span>.
         </h2>
-        <div class="video"><p>[VIDEO WILL BE HERE]</p></div>
+        <div class="video"><p>[A VIDEO GOES HERE]</p></div>
       </section>
 
       <section class="section-sized how-it-works">
@@ -158,18 +141,19 @@
               <div class="explanation-content">
                 <h3>Simulate the input</h3>
                 <p>
-                  Late Mate takes a testing scenario and executes it, pretending
-                  to be a keyboard and a mouse. Late Mate runs with 1kHz polling
-                  rate, the highest available for USB&nbsp;2.0 devices.
+                  Late Mate device takes a testing scenario and executes it,
+                  pretending to be a keyboard and a mouse. It's polled at 1kHz,
+                  the highest polling rate available for USB&nbsp;2.0 devices.
                 </p>
               </div>
             </li>
             <li id="explanation-2">
               <div class="explanation-content">
-                <h3>Your computer does the work</h3>
+                <h3><em>[Computer work goes here]</em></h3>
                 <p>
-                  From USB drivers to software to the kernel to the compositor,
-                  your computer works hard to change pixels on the screen.
+                  From USB controller to software to the kernel to the
+                  compositor, your computer works hard to change pixels on the
+                  screen.
                 </p>
               </div>
             </li>
@@ -177,9 +161,9 @@
               <div class="explanation-content">
                 <h3>Detect the screen change</h3>
                 <p>
-                  Late Mate device looks at a patch of your screen, waiting for
-                  a brightness change. In 0.5ms Late Mate knows that the
-                  computer started reacting to the input.
+                  The device looks at a patch of your screen, waiting for a
+                  brightness change. It only takes Late Mate 0.5ms to know that
+                  the computer started reacting to the input.
                 </p>
               </div>
             </li>
@@ -187,9 +171,8 @@
               <div class="explanation-content">
                 <h3>Time the difference</h3>
                 <p>
-                  All time measurements are done in the device, no matter what
-                  you computer's clock does. The results are exported to the
-                  computer.
+                  Timing is done completely on-device, so the results are
+                  precise no matter what your computer's clock does.
                 </p>
               </div>
             </li>
@@ -205,28 +188,92 @@
         </div>
       </section>
 
-      <!--<p class="text-2xl font-bold">
-          <p>Laggy computers <span class="text-lmhlred">suck</span>.<br />
-          Late Mate <span class="text-lmhlblue">measures</span>.<br />
-          You <span class="text-lmhlgreen">fix</span>.
-        </p>-->
-
-      <hr />
-      <p>Everything below is work in progress</p>
-      <hr />
-
       <section class="section-sized fix-cta">
-        <div class="title"></div>
+        <div class="plan">
+          <p>TL;DR:</p>
+          <ul>
+            <li>Lag: creeps in</li>
+            <li>Late Mate: measures</li>
+            <li>You: fix</li>
+          </ul>
+        </div>
+        <div>
+          <p>
+            But first, Late Mate will be <strong>crowdfunded</strong>. Smash the
+            button for updates&nbsp;→&nbsp;→&nbsp;→
+          </p>
+        </div>
+        <div>
+          <form
+            action="https://buttondown.email/api/emails/embed-subscribe/late-mate"
+            method="post"
+            target="popupwindow"
+            onsubmit="onSubscribeSubmit()"
+            class="form"
+          >
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email"
+              aria-label="Email"
+              class="email"
+            />
+            <button type="submit" class="plausible-event-name=Subscribe">
+              Subscribe
+            </button>
+          </form>
+        </div>
       </section>
 
-      <section class="section-sized">
-        Have read enough? Late Mate is launching pre-orders soon. Subscribe for
-        updates:
-      </section>
+      <section class="section-sized what-it-is">
+        <h2 class="header">What Late&nbsp;Mate <em>is</em>?</h2>
+        <div class="content">
+          <div class="column">
+            <h3 class="column-header">Software</h3>
+            <ul>
+              <li>
+                <div>CLI tool</div>
+                <div>Ready</div>
+              </li>
 
-      <section class="section-sized">
-        <h2>The plan</h2>
-        <p>Foo</p>
+              <li>
+                <div>Rust crate</div>
+                <div>In progress</div>
+              </li>
+
+              <li>
+                <div>Desktop app</div>
+                <div>In progress</div>
+              </li>
+            </ul>
+          </div>
+          <div class="column">
+            <h3 class="column-header">Hardware</h3>
+            <ul>
+              <li>
+                <div>Minimum Viable Prototype</div>
+                <div>Ready</div>
+              </li>
+
+              <li>
+                <div>Pre-release device</div>
+                <div>In progress</div>
+              </li>
+
+              <li>
+                <div>Release device</div>
+                <div>Future</div>
+              </li>
+            </ul>
+          </div>
+          <div class="column cloud">
+            <h3 class="column-header">Cloud</h3>
+            <p>
+              Want to integrate latency testing into your release pipelines?
+              <a href="mailto:cloud@late-mate.com">Drop us a message</a>!
+            </p>
+          </div>
+        </div>
       </section>
 
       <section class="section-sized">
