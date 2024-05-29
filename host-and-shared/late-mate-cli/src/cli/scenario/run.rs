@@ -4,7 +4,7 @@ use crate::statistics::{process_changepoints, process_recording, FinalStats, Pro
 use anyhow::{anyhow, Context};
 use console::style;
 use file_output::{FileOutput, FileOutputKind};
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
 use late_mate_device::scenario::Scenario;
 use late_mate_device::Device;
@@ -190,20 +190,23 @@ impl Args {
 
         let progress = get_progressbar(&scenario);
 
+        let mut counter = 0usize;
         let mut stream = device
             .run_scenario(scenario.clone())
             .await
             .context("Scenario validation error")?
-            .enumerate();
+            // no "enumerate" on TryStreamExt
+            .map_ok(|recording| {
+                let current_counter = counter;
+                counter += 1;
+                (current_counter, recording)
+            });
 
         self.output_init(&progress);
 
         let mut changepoints = Vec::with_capacity(usize::from(scenario.repeats));
 
-        while let Some((idx, result)) = stream.next().await {
-            // it's OK to just return the error because Device doesn't proceed after emitting
-            // an error
-            let recording = result?;
+        while let Some((idx, recording)) = stream.try_next().await? {
             let processed = process_recording(recording);
             self.output_step(&scenario, &progress, &file_outputs, idx, &processed)
                 .await?;

@@ -3,6 +3,7 @@ use crate::agents::usb_tx::UsbTxHandle;
 use crate::agents::{agent_watcher, dispatcher, usb_rx, usb_tx};
 use crate::scenario::{to_device_scenario, Moment, Recording, Scenario};
 use crate::usb::UsbDevice;
+use futures::TryStream;
 use late_mate_shared::comms;
 use late_mate_shared::comms::device_to_host;
 use late_mate_shared::comms::host_to_device;
@@ -13,7 +14,6 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, timeout};
 use tokio_stream::wrappers::ReceiverStream;
-use tokio_stream::Stream;
 
 mod agents;
 pub mod hid;
@@ -287,7 +287,7 @@ impl Device {
     pub async fn run_scenario(
         &self,
         scenario: Scenario,
-    ) -> Result<impl Stream<Item = Result<Recording, Error>> + '_, scenario::ValidationError> {
+    ) -> Result<impl TryStream<Ok = Recording, Error = Error>, scenario::ValidationError> {
         scenario.validate()?;
 
         let (test_device_scenario, test_hid_index) = to_device_scenario(scenario.test.as_slice());
