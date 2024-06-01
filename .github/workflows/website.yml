@@ -42,4 +42,4 @@ jobs:
 
       - name: Copy files to the bucket
         run:
-          aws s3 sync website s3://${{ secrets.WEBSITE_S3_BUCKET_NAME }}
+          aws s3 sync website/old s3://${{ secrets.WEBSITE_S3_BUCKET_NAME }}
