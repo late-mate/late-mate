@@ -185,9 +185,11 @@
             </li>
           </ol>
           <div class="image">
+            <!-- Vite sadly doesn't process <object> tags yet, see https://github.com/vitejs/vite/issues/7062 -->
+            <!--suppress HtmlUnknownTarget -->
             <object
               id="explanation-svg"
-              data="static/concept.svg"
+              data="concept.svg"
               type="image/svg+xml"
               width="100%"
             ></object>
