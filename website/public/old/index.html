@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="favicon.ico" sizes="32x32" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <title>Late Mate</title>
+    <link href="style.css" rel="stylesheet" />
+
+    <meta
+      name="description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+    <meta name="twitter:image:src" content="https://late-mate.com/card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Late Mate — Measure latency from keypress to the screen"
+    />
+    <meta
+      name="twitter:description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+
+    <meta property="og:image" content="https://late-mate.com/card.jpg" />
+    <meta
+      property="og:image:alt"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+    <meta property="og:site_name" content="Late Mate" />
+    <meta property="og:type" content="object" />
+    <meta
+      property="og:title"
+      content="Late Mate — Measure latency from keypress to the screen"
+    />
+    <meta property="og:url" content="https://late-mate.com/" />
+    <meta
+      property="og:description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+  </head>
+  <body class="index">
+    <main>
+      <h1>Late Mate</h1>
+      <p>Measure latency from keypress to the screen</p>
+
+      <img width="1200" height="760" src="setup.webp" />
+
+      <h2>The latency problem</h2>
+
+      <p>
+        We all like it when our computer feels snappy. But what exactly does
+        “snappy” mean? The main factor is latency: the time between pressing a
+        key and observing change on a screen.
+      </p>
+
+      <p>
+        On a modern device, many factors contribute to latency: USB drivers, OS,
+        compositor, scheduler, application itself, video driver, monitor, and,
+        after all, physics.
+      </p>
+
+      <h2>Our solution</h2>
+
+      <p>
+        The first step to a snappy computer is measuring the problem. You can’t
+        improve what you can’t measure.
+      </p>
+
+      <p>
+        Second is realizing you need an external device to trigger the entire
+        stack: from keypress over USB to the photons on the screen. Can’t be
+        done from within the computer.
+      </p>
+
+      <div class="key_to_eye">
+        <div class="left"></div>
+        <div class="mid"></div>
+        <div class="right"></div>
+      </div>
+
+      <p>
+        This is exactly what we are building: a physical device that can
+        simulate keypresses, then look at the screen and measure the full
+        key-to-photon latency of your entire stack, with all the factors
+        accounted for.
+      </p>
+
+      <p>
+        Repeat that many times and you’ll have statistics relevant to your
+        particular hardware and your particular software stack. View results as
+        a graph or export to an open format like CSV.
+      </p>
+
+      <h2>Who needs this?</h2>
+
+      <p>
+        <strong>Software developers</strong>. Are you building an app? Great!
+        Measure how long it takes for your app to react to user input. Automate
+        testing. Compare against competitors. Nimble apps => happy users.
+      </p>
+
+      <p>
+        <strong class="gamer">Gamers</strong>. Lower latency gives you more time
+        to react. But there are so many factors! Borderless or fullscreen?
+        Double or triple buffering? Frame generation? Anti-lag? Game mode? It
+        changes from game to game, too, and from device to device. So figure out
+        reliably which factors contribute to latency and improve your reaction
+        time.
+      </p>
+
+      <p>
+        <strong>Regular users</strong>. Maybe you just want a fast app for
+        yourself? The most snappy text editor. Or terminal. Or browser. Or
+        messenger. You just like fast animations and quick typing—who doesn’t?
+        Find what works best on your hardware, with your monitor, and on your
+        OS.
+      </p>
+
+      <p>Remember: you can’t improve what you can’t measure.</p>
+
+      <h2>How exactly does Late Mate work?</h2>
+
+      <p>
+        Late Mate pretends to be two things: a virtual keyboard for the PC it’s
+        plugged into, and a light sensor that you put on your monitor.
+      </p>
+
+      <ol>
+        <li>
+          When testing starts, Late Mate will send a sequence of HID events over
+          USB, like constantly typing and erasing the letter ‘X’ (customizable).
+        </li>
+        <li>
+          At the same time, Late Mate’s 2000 hz light sensor detects brightness
+          changes under the device.
+        </li>
+        <li>
+          The delay between sending key presses and brightness change is
+          measured on the device and reported to the companion application.
+        </li>
+        <li>
+          The application presents collected data as a latency distribution
+          chart.
+        </li>
+      </ol>
+
+      <p>
+        You can customize which events should be sent, how often, how many,
+        adjust for LCD response time, etc.
+      </p>
+
+      <p>
+        We also provide you with raw data in CSV form if you want to analyze it
+        yourself.
+      </p>
+
+      <img width="1200" height="460" src="schematic.webp" />
+
+      <h2>What’s in the box?</h2>
+
+      <p>Late Mate will ship with:</p>
+
+      <ul>
+        <li>The device itself,</li>
+        <li>GUI application for configuration and running measurements,</li>
+        <li>CLI application with stable API for CI/automation,</li>
+        <li>
+          A Rust crate to help you interface with Late Mate in your tools.
+        </li>
+      </ul>
+
+      <p>
+        All software we plan to ship will be open source. Firmware will be
+        supported for at least a year and open-sourced after one year in any
+        case.
+      </p>
+
+      <img width="1200" height="530" src="overview.webp" />
+
+      <h2>When?</h2>
+
+      <p>
+        We are currently finalizing the hardware and software design. We expect
+        shipping to start before Q3 2024.
+      </p>
+
+      <p>
+        Subscribe to get project updates and be notified when pre-orders open:
+      </p>
+
+      <form
+        action="https://buttondown.email/api/emails/embed-subscribe/late-mate"
+        method="post"
+        target="popupwindow"
+        onsubmit="onSubscribeSubmit()"
+        class="embeddable-buttondown-form"
+      >
+        <div>
+          <input type="email" name="email" placeholder="Your email" />
+          <input
+            type="submit"
+            value="Subscribe"
+            class="plausible-event-name=Subscribe"
+          />
+        </div>
+        <p>No spam. Unsubscribe at any time</p>
+      </form>
+
+      <p>Previous updates:</p>
+      <ul>
+        <li>
+          <a href="../updates/001/update-001.html"
+            >001 — Programming on the metal</a
+          >
+        </li>
+        <li>
+          <a href="../updates/002/update-002.html">002 — Prototype progress</a>
+        </li>
+        <li>
+          <a href="../updates/003/update-003.html"
+            >003 — Houston, we have results!</a
+          >
+        </li>
+      </ul>
+
+      <h2>Who’s behind this?</h2>
+
+      <div class="columns">
+        <div>
+          <img width="300" height="225" src="team.webp" />
+        </div>
+        <div>
+          <p>
+            <a href="https://tonsky.me/" target="_blank">Nikita Prokopov</a>,
+            creator of Fira Code, Grumpy Website, author of Software
+            Disenchantment, and long-term critic of the state of modern
+            computing.
+          </p>
+
+          <p>
+            <a href="https://dgroshev.com/" target="_blank">Dan Groshev</a>,
+            ex-CTO of a software+hardware ed-tech startup, branching into Rust
+            and industrial design in his spare time.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <div class="footer">
+      <p>&copy; 2023..24 Nikita Prokopov, Dan Groshev</p>
+      <p>Last update: Mar 27, 2024</p>
+    </div>
+
+    <!--suppress HtmlUnknownTarget -->
+    <script
+      defer
+      data-domain="late-mate.com"
+      data-api="/plau/api/event"
+      src="/plau/js/script.outbound-links.tagged-events.js"
+    ></script>
+    <script>
+      window.plausible =
+        window.plausible ||
+        function () {
+          (window.plausible.q = window.plausible.q || []).push(arguments);
+        };
+      window.onSubscribeSubmit = function () {
+        plausible('Subscribe');
+        return window.open('https://buttondown.email/late-mate', 'popupwindow');
+      };
+    </script>
+  </body>
+</html>

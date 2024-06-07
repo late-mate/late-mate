@@ -1,45 +1,45 @@
-name: website
-
-on:
-  push:
-    branches:
-      - 'main'
-    paths:
-      - 'website/**'
-      - '.github/workflows/website.yml'
-
-jobs:
-  upload:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Create LFS file list
-        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
-
-      - name: LFS Cache
-        uses: actions/cache@v3
-        with:
-          path: .git/lfs/objects
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-          restore-keys: |
-            ${{ runner.os }}-lfs-
-
-      - name: Git LFS Pull (skipping vendored binaries)
-        run: GIT_TRACE=1 git lfs pull --exclude="vendor/"
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.WEBSITE_S3_BUCKET_MANAGER_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.WEBSITE_S3_BUCKET_MANAGER_ACCESS_KEY_SECRET }}
-          aws-region: eu-west-1
-
-      - name: Restore file mtimes for more efficient S3 sync
-        uses: chetan/git-restore-mtime-action@v2
-
-      - name: Copy files to the bucket
-        run:
-          aws s3 sync website/old s3://${{ secrets.WEBSITE_S3_BUCKET_NAME }}
+#name: website
+#
+#on:
+#  push:
+#    branches:
+#      - 'main'
+#    paths:
+#      - 'website/**'
+#      - '.github/workflows/website.yml'
+#
+#jobs:
+#  upload:
+#    runs-on: ubuntu-22.04
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v3
+#
+#      - name: Create LFS file list
+#        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+#
+#      - name: LFS Cache
+#        uses: actions/cache@v3
+#        with:
+#          path: .git/lfs/objects
+#          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+#          restore-keys: |
+#            ${{ runner.os }}-lfs-
+#
+#      - name: Git LFS Pull (skipping vendored binaries)
+#        run: GIT_TRACE=1 git lfs pull --exclude="vendor/"
+#
+#      - name: Configure AWS Credentials
+#        uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          aws-access-key-id: ${{ secrets.WEBSITE_S3_BUCKET_MANAGER_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.WEBSITE_S3_BUCKET_MANAGER_ACCESS_KEY_SECRET }}
+#          aws-region: eu-west-1
+#
+#      - name: Restore file mtimes for more efficient S3 sync
+#        uses: chetan/git-restore-mtime-action@v2
+#
+#      - name: Copy files to the bucket
+#        run:
+#          aws s3 sync website/old s3://${{ secrets.WEBSITE_S3_BUCKET_NAME }}

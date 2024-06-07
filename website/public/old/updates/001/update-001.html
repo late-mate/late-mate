@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="../../favicon.ico" sizes="32x32" />
+    <link rel="icon" href="../../icon.svg" type="image/svg+xml" />
+    <title>Late Mate</title>
+    <link href="../../style.css" rel="stylesheet" />
+
+    <meta
+      name="description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+    <meta name="twitter:image:src" content="https://late-mate.com/card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Late Mate — Measure latency from keypress to the screen"
+    />
+    <meta
+      name="twitter:description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+
+    <meta property="og:image" content="https://late-mate.com/card.jpg" />
+    <meta
+      property="og:image:alt"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+    <meta property="og:site_name" content="Late Mate" />
+    <meta property="og:type" content="object" />
+    <meta
+      property="og:title"
+      content="Late Mate — Measure latency from keypress to the screen"
+    />
+    <meta property="og:url" content="https://late-mate.com/" />
+    <meta
+      property="og:description"
+      content="Portable universal latency measurement device — from keypress to the screen"
+    />
+  </head>
+  <body class="blog">
+    <main>
+      <a href="../../../../index.html"><- Home</a>
+
+      <h1>Update 001 — Programming on the metal</h1>
+      <p>Dec 25, 2023</p>
+
+      <p>Hi! How is it going? Nikita here.</p>
+
+      <p>Welcome to our very first progress update!</p>
+
+      <p>
+        No preorders yet, but we were working hard and thus feel it’s important
+        to end the year with something tangible.
+      </p>
+
+      <h2>Programming on the metal</h2>
+
+      <p>
+        I programmed all my life at the very top of programming languages
+        pyramid, mindlessly utilizing hundreds of abstractions I didn’t even
+        know existed. That’s why writing a program for microcontrollers
+        fascinates me.
+      </p>
+
+      <p>
+        We chose RP2040 as our microcontroller, and this is what we have at our
+        disposal:
+      </p>
+
+      <ul>
+        <li>133 MHz ARM Cortex-M0+ processor</li>
+        <li>Two cores</li>
+        <li>264 Kb of RAM</li>
+        <li>2Mb of flash memory</li>
+      </ul>
+
+      <h3>Cross-compilation</h3>
+
+      <p>
+        Adventure starts immediately: with cross-compilation. Raspberry Pi Pico
+        runs a processor with a different architecture than my (and probably
+        your) computer. This is not a technical challenge (in the end, the
+        compiler consumes text and outputs bytes, and bytes are the same
+        everywhere), but more of an organizational one (meaning we, programmers,
+        made a mess out of it).
+      </p>
+
+      <p>
+        Luckily, Rust compiler knows how to deal with our particular case. Not
+        having an OS or libc to depend on makes it easier, too.
+      </p>
+
+      <h3>No allocations</h3>
+
+      <p>
+        Now, the limited memory. In most computers, you allocate memory left and
+        right without thinking about it. There’s usually lots of it, and your
+        program will probably finish long before it reaches the limit. In our
+        case, we only have 264 Kb and we have to work forever. Dynamic
+        allocation has another very nasty problem: fragmentation. You might free
+        5 bytes here, 17 there, but when you need 20, you might not be able to
+        find a contiguous segment of that size. It gets worse the longer your
+        program runs, too.
+      </p>
+
+      <p>
+        To address that, we run without dynamic allocations at all (meaning you
+        can’t use Rust’s standard library, so <code>no_std</code>). All memory
+        is known at compile time and is statically allocated. No new memory can
+        be claimed. Want to concatenate two strings? Declare a byte array of a
+        reasonable size ahead of time.
+      </p>
+
+      <h3>Debug output</h3>
+
+      <p>
+        The simplest, most commonly used form of debugging is println. But on
+        the microcontroller, there’s nowhere to print. There’s no screen, no
+        terminal, no pipes even — these are all OS abstractions, are we don’t
+        have OS.
+      </p>
+
+      <p>
+        A microcontroller has pins, and it can apply some voltage to them, which
+        can be interpreted as a sequence of zeroes and ones. Which is, to be
+        fair, pretty low-level.
+      </p>
+
+      <p>
+        Meet <a href="https://defmt.ferrous-systems.com/">defmt</a>. It
+        deconstructs all your printlns into two parts: a static list of string
+        data and dynamic objects you splice into them. Objects are serialized
+        and communicated through debug protocol to debug probe, and strings are
+        all known at compile-time. The final console output is reconstructed on
+        your (much more powerful) computer, saving the microcontroller precious
+        cycles.
+      </p>
+
+      <h3>No OS</h3>
+
+      <p>
+        Yes, a microcontroller runs no OS. There are no files, no sockets, no
+        stdout, nothing. It executes the code you give it directly. So whatever
+        you want it to do, you have to bring it yourself. Even a panic handler
+        is
+        <a href="https://docs.rs/panic-probe/0.3.1/panic_probe/">a library</a>.
+        Or
+        <a href="https://github.com/rust-embedded/critical-section">atomics</a>.
+      </p>
+
+      <h3>Async</h3>
+
+      <p>
+        Async is usually considered a pretty high-level feature, and even some
+        high-level languages might add it late in their lifespan.
+      </p>
+
+      <p>
+        Imagine my surprise finding out that async just works on this very
+        primitive device we have with no help from anything except the library
+        and the Rust language. Well done, Rust!
+      </p>
+
+      <h3>Type-safe hardware</h3>
+
+      <p>
+        Considering Rust's goal of making everything safe, in the case of
+        microcontrollers, they managed to make even hardware access safe! Get
+        the right set of types for your board (in our case,
+        <a href="https://github.com/embassy-rs/embassy/tree/main/embassy-rp"
+          >embassy-rp</a
+        >) and you can turn your head off and let the compiler catch you
+        accessing hardware the wrong way.
+      </p>
+
+      <h3>In conclusion</h3>
+
+      <p>
+        Programming for hardware in Rust feels weird: on one side, you have to
+        think at the lowest possible level of detail, on the other, you get a
+        relatively high-level language to work in.
+      </p>
+
+      <p>
+        But the overall experience is great, and we even get to (potentially)
+        share code between the microcontroller, our CLI, and our GUI app.
+      </p>
+
+      <p>Well done, Rust!</p>
+
+      <h2>Competition tease</h2>
+
+      <p>
+        We watched
+        <a href="https://www.youtube.com/watch?v=NE0qg_8k0BE"
+          >CS2's Input Latency</a
+        >
+        with great interest. Apparently, Nvidia is making a very similar device
+        called “LDAT” and sells it to selected reviewers and developers for
+        $1500.
+      </p>
+
+      <p>
+        Compared to them, we plan to attack the problem from a different angle:
+      </p>
+
+      <ul>
+        <li>Better industrial design (sorry, no finicky elastic straps)</li>
+        <li>
+          Statistically significant amounts of measurements (hundreds or -
+          thousands, completely automated)
+        </li>
+        <li>Better feedback in the companion app</li>
+        <li>Much more affordable price tag</li>
+        <li>Available to everyone</li>
+      </ul>
+
+      <h2>Board progress</h2>
+
+      <p>Dan has asked me to share this picture:</p>
+
+      <img src="update-001.webp" />
+
+      <p>Not sure what to make of it but no doubt it’s important.</p>
+
+      <p>That’s about it. Happy Christmas, and see you all in 2024!</p>
+
+      <form
+        action="https://buttondown.email/api/emails/embed-subscribe/late-mate"
+        method="post"
+        target="popupwindow"
+        onsubmit="onSubscribeSubmit()"
+        class="embeddable-buttondown-form"
+      >
+        <div>
+          <input type="email" name="email" placeholder="Your email" />
+          <input
+            type="submit"
+            value="Subscribe"
+            class="plausible-event-name=Subscribe"
+          />
+        </div>
+        <p>No spam. Unsubscribe at any time</p>
+      </form>
+    </main>
+
+    <div class="footer">
+      <p>&copy; 2023..24 Nikita Prokopov, Dan Groshev</p>
+      <p>Last update: Mar 27, 2024</p>
+    </div>
+
+    <!--suppress HtmlUnknownTarget -->
+    <script
+      defer
+      data-domain="late-mate.com"
+      data-api="/plau/api/event"
+      src="/plau/js/script.outbound-links.tagged-events.js"
+    ></script>
+    <script>
+      window.plausible =
+        window.plausible ||
+        function () {
+          (window.plausible.q = window.plausible.q || []).push(arguments);
+        };
+      window.onSubscribeSubmit = function () {
+        plausible('Subscribe');
+        return window.open('https://buttondown.email/late-mate', 'popupwindow');
+      };
+    </script>
+  </body>
+</html>

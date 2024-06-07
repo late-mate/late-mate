@@ -1,0 +1,60 @@
+delay_between_ms = [100, 200]
+
+[[test]]
+type = "mouse"
+buttons = ["left"]
+
+[[test]]
+type = "wait"
+ms = 200
+
+[[test]]
+type = "start_timing"
+
+[[test]]
+type = "mouse"
+buttons = ["left"]
+x = 60
+
+[[test]]
+type = "mouse"
+buttons = ["left"]
+x = 60
+
+[[test]]
+type = "mouse"
+buttons = ["left"]
+x = 60
+
+[[test]]
+type = "mouse"
+
+# Late Mate stops recording light levels when scenario ends, so it's important
+# to add an explicit wait here.
+[[test]]
+type = "wait"
+ms = 200
+
+[[revert]]
+type = "keyboard"
+modifiers = ["l_meta"]
+
+[[revert]]
+type = "keyboard"
+pressed_keys = ["z"]
+modifiers = ["l_meta"]
+
+[[revert]]
+type = "keyboard"
+
+[[revert]]
+type = "mouse"
+x = -60
+
+[[revert]]
+type = "mouse"
+x = -60
+
+[[revert]]
+type = "mouse"
+x = -60

@@ -783,6 +783,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"inter-ui@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "inter-ui@npm:4.0.2"
+  checksum: 10/dc831fbd7c7f21c2f26c8b9956bbcc1a79af4f6de3e68bd1d4c5c95d81e9207ff09d21f9776b465e76e1f80b9fe3891ca023a5c2914c5553d8f7d53de776eabc
+  languageName: node
+  linkType: hard
+
 "ip-address@npm:^9.0.5":
   version: 9.0.5
   resolution: "ip-address@npm:9.0.5"
@@ -846,7 +853,7 @@ __metadata:
   resolution: "late-mate-website@workspace:."
   dependencies:
     autoprefixer: "npm:^10.4.19"
-    modern-normalize: "npm:^2.0.0"
+    inter-ui: "npm:^4.0.2"
     postcss: "npm:^8.4.38"
     prettier: "npm:3.2.5"
     typescript: "npm:^5.2.2"
@@ -980,13 +987,6 @@ __metadata:
   bin:
     mkdirp: bin/cmd.js
   checksum: 10/d71b8dcd4b5af2fe13ecf3bd24070263489404fe216488c5ba7e38ece1f54daf219e72a833a3a2dc404331e870e9f44963a33399589490956bff003a3404d3b2
-  languageName: node
-  linkType: hard
-
-"modern-normalize@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "modern-normalize@npm:2.0.0"
-  checksum: 10/866690696e1989c57416e7d9c589910bbd02221fb1b2bac0ea735e5a22e0525e9bec67269571c3eaa0de879938d5447c88dc0749675b349c61d6753038730330
   languageName: node
   linkType: hard
 
