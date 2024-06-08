@@ -184,6 +184,8 @@ main {
         /* styling must be identical  */
         font-family: 'Source Serif', serif;
 
+        overflow-wrap: anywhere;
+
         border: none;
         border-bottom: 1px solid oklch(from var(--c-hero-bg) 30% c h);
 
