@@ -260,6 +260,10 @@ main {
         }
       }
 
+      .sample {
+        color: oklch(from var(--c-hero-bg) 70% calc(c * 50%) h);
+      }
+
       .typing {
         display: flex;
         flex-direction: column;
@@ -286,6 +290,8 @@ main {
         .input-wrap > textarea {
           resize: none;
           overflow: hidden;
+
+          border-radius: 0;
 
           &:focus {
             outline: transparent !important;
