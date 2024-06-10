@@ -624,7 +624,7 @@ main {
           color: oklch(55% 0.0235 302.13);
         }
 
-        &:hover::before {
+        &.active::before {
           color: var(--c-very-blue);
         }
 
