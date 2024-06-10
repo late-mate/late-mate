@@ -56,13 +56,70 @@ export function initTextarea() {
 const delaySlider = elById('input', 'latency-demo-delay');
 const delayValue = elById('div', 'latency-demo-delay-value');
 
+let cleaningInProgress = false;
+
+function cleanTextarea() {
+  if (cleaningInProgress) {
+    return;
+  }
+
+  if (textarea.value.trim() === '') {
+    textarea.value = '';
+  }
+
+  cleaningInProgress = true;
+
+  textarea.disabled = true;
+  let breakpoints = [...textarea.value.matchAll(/\s+/g)].map(
+    (match) => match.index,
+  );
+
+  if (breakpoints[0] !== 0) {
+    breakpoints = [0, ...breakpoints];
+  }
+
+  // 16ms per frame
+  // 300ms cleanup
+  // => 16ms pause, up to 18 steps
+
+  const step = Math.ceil(breakpoints.length / 18);
+  if (step === 0) {
+    throw new Error('unexpected 0 step');
+  }
+
+  const makeStep = () => {
+    // last step might be shorter
+    const currentStep = Math.min(breakpoints.length, step);
+
+    const cutoff = breakpoints[breakpoints.length - currentStep];
+    textarea.value = textarea.value.substring(0, cutoff);
+    syncTextareaHeight();
+
+    breakpoints.splice(-currentStep, currentStep);
+  };
+
+  const finalise = () => {
+    textarea.disabled = false;
+    cleaningInProgress = false;
+  };
+
+  makeStep();
+
+  const handle = setInterval(() => {
+    if (breakpoints.length > 0) {
+      makeStep();
+    } else {
+      clearInterval(handle);
+      finalise();
+    }
+  }, 16);
+}
+
 export function initSlider() {
   function syncDelayValue() {
     const newDelay = parseInt(delaySlider.value);
     if (newDelay !== currentDelay) {
-      // todo: animate
-      textarea.value = '';
-      syncTextareaHeight();
+      cleanTextarea();
 
       currentDelay = newDelay;
 

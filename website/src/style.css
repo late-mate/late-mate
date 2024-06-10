@@ -254,6 +254,12 @@ main {
 
       align-self: flex-start;
 
+      @media (min-width: 1024px) {
+        & {
+          width: 23rem;
+        }
+      }
+
       .controls {
         display: flex;
         gap: 1rem;
