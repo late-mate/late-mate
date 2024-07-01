@@ -28,3 +28,4 @@ dist-ssr
 secrets.env
 
 static/built/*
+static/processed_images/*
