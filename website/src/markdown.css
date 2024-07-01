@@ -1,0 +1,68 @@
+.markdown {
+  font-size: 1.2rem;
+  padding: 0 2rem;
+
+  h1 {
+    font-size: 4rem;
+    margin: 1rem 0;
+    font-weight: bold;
+  }
+
+  h2 {
+    font-size: 2rem;
+    margin-top: 3rem;
+    font-weight: bold;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+  }
+
+  p {
+    margin: 1.35rem 0;
+  }
+
+  h2 + p {
+    margin-top: 1.15rem;
+  }
+
+  a {
+    /* same as .link in style.css */
+
+    /*color: oklch(from var(--c-very-blue) 50% c h);*/
+    color: oklch(50% 0.4 220);
+    text-decoration: underline;
+    text-underline-offset: 0.1rem;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
+  ol,
+  ul {
+    list-style-position: outside;
+    padding-left: 2rem;
+  }
+
+  ul {
+    list-style-type: circle;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  ol > li,
+  ul > li {
+    padding-left: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  img {
+    max-width: min(500px, 100%);
+    max-height: 500px;
+
+    margin: 1.35rem 0;
+  }
+}

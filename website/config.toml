@@ -1,6 +1,11 @@
+# Zola config
+
 base_url = "https://late-mate.pages.dev/"
 
 output_dir = "dist/"
+
+# I write emails first and store them next to well-formatted updates
+ignored_content = ["**/*/email.md"]
 
 ignored_static = ["built/.vite/*"]
 

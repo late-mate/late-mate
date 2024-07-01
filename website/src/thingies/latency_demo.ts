@@ -1,4 +1,4 @@
-import { assertEl, elById } from '../asserts.ts';
+import { assertDefined, assertEl, elById } from '../asserts.ts';
 
 const textarea = elById('textarea', 'latency-demo-textarea');
 const textareaWrap = elById('div', 'latency-demo-textarea-wrap');
@@ -9,11 +9,20 @@ const PRINTABLE_CHARACTERS =
   '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()-_+=[]\\{}|;\':",./<>?£ ';
 
 function syncTextareaHeight() {
+  assertDefined(textarea);
+  assertDefined(textareaWrap);
+
   // see https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/
   textareaWrap.dataset['replicatedValue'] = textarea.value;
 }
 
 export function initTextarea() {
+  if (!textarea) {
+    return;
+  }
+
+  assertDefined(textareaWrap);
+
   textarea.disabled = false;
 
   textarea.addEventListener('keydown', (evt) => {
@@ -59,6 +68,8 @@ const delayValue = elById('div', 'latency-demo-delay-value');
 let cleaningInProgress = false;
 
 function cleanTextarea() {
+  assertDefined(textarea);
+
   if (cleaningInProgress) {
     return;
   }
@@ -116,7 +127,16 @@ function cleanTextarea() {
 }
 
 export function initSlider() {
+  if (!delaySlider) {
+    return;
+  }
+
+  assertDefined(delayValue);
+
   function syncDelayValue() {
+    assertDefined(delaySlider);
+    assertDefined(delayValue);
+
     const newDelay = parseInt(delaySlider.value);
     if (newDelay !== currentDelay) {
       cleanTextarea();

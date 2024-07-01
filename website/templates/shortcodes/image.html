@@ -1,0 +1,30 @@
+{% set hash = get_hash(path=page.colocated_path ~ src, sha_type=256, base64=false) | truncate(length=8, end="") %}
+{% set path = page.colocated_path ~ src %}
+{% set original_meta = get_image_metadata(path=path) %}
+
+{% if original_meta.width > 500 %}
+  {% set resized = resize_image(path=path, width=500, op='fit_width') %}
+  {% set resized_url = resized.url %}
+
+  {% if original_meta.width > (500 * 2) %}
+    {% set resized_2x = resize_image(path=path, width=500 * 2, op='fit_width') %}
+    {% set resized_2x_url = resized_2x.url %}
+  {% else %}
+    {% set resized_2x_url = src %}
+  {% endif %}
+{% else %}
+  {% set resized_url = src %}
+  {% set resized_2x_url = src %}
+{% endif %}
+
+<a href="{{ src }}?hash={{ hash }}" style="display: contents;" target="_blank">
+  <img
+    style="aspect-ratio: {{ original_meta.width }}/{{ original_meta.height }}; display: block;"
+    src="{{ resized_url }}?hash={{ hash }}"
+    srcset="
+      {{ resized_url }}?hash={{ hash }},
+      {{ resized_2x_url }}?hash={{ hash }} 2x
+    "
+    alt="{{ alt }}"
+  />
+</a>

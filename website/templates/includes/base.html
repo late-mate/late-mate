@@ -13,7 +13,6 @@
       href="{{ get_url(path='icon.svg') }}"
       type="image/svg+xml"
     />
-    <title>Late Mate</title>
 
     <meta
       name="description"
@@ -58,7 +57,19 @@
   </head>
 
   <body>
-    {% block body %}{% endblock %}
+    {% block body %}
+      {% block header %}
+      {% endblock %}
+
+      <main>{% block content %}{% endblock %}</main>
+
+      <footer class="footer">
+        <p>
+          © 2024
+          <a href="https://ynoengineering.com/">YNO Engineering Ltd</a>
+        </p>
+      </footer>
+    {% endblock %}
 
     {% if is_prod %}
       <script
@@ -68,7 +79,10 @@
     {% else %}
       <!-- development mode -->
       <script type="module" src="http://localhost:5173/@vite/client"></script>
-      <script type="module" src="http://localhost:5173/src/main.ts"></script>
+      <script
+        type="module"
+        src="http://localhost:5173/built/src/main.ts"
+      ></script>
     {% endif %}
 
     {# analytics #}

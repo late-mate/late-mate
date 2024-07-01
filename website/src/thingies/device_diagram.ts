@@ -18,14 +18,19 @@ const explanations: HTMLLIElement[] = [];
 
 explanationToArrowClass.forEach(([explanationId, arrowClass]) => {
   const explanation = elById('li', explanationId);
-  explanation.dataset[ARROW_CLASS_KEY] = arrowClass;
-  explanations.push(explanation);
+  if (explanation) {
+    explanation.dataset[ARROW_CLASS_KEY] = arrowClass;
+    explanations.push(explanation);
+  }
 });
 
 function setSvgColour(explanation: HTMLLIElement, colour: string) {
+  assertDefined(explanationObject);
+
   // it has to be deferred as we might not have the element loaded yet,
   // and <object> apparently doesn't fire 'load" properly
-  const explanationSvg = assertDefined(explanationObject.contentDocument);
+  const explanationSvg = explanationObject.contentDocument;
+  assertDefined(explanationSvg);
 
   const arrowClass = assertDefined(explanation.dataset[ARROW_CLASS_KEY]);
 
@@ -106,6 +111,10 @@ function initIntersection() {
 }
 
 export function initDiagram() {
+  if (!explanationObject) {
+    return;
+  }
+
   if (matchMedia('(hover: hover)').matches) {
     initHover();
   } else {
