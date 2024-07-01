@@ -75,8 +75,8 @@ But then I realised I should just reach out and invite people to pitch in. Late 
 a few rocks starting an avalanche and flipping the industry into a new, better state. I know that some people 
 love and look for endeavours of this sort. Some of you might be the people.
 
-If you are, let's talk. Reply to this email or ping me at [dan@dgroshev.com](mailto:dan@dgroshev.com),
-and let's change every computer out there, together.
+If you are, let's talk. Ping me at [dan@dgroshev.com](mailto:dan@dgroshev.com), and let's change every computer 
+out there, together.
 
 ## Team Changes
 
