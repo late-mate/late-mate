@@ -30,7 +30,7 @@ Things are moving!
 I made a demo at my favourite London meetup, [Future of Coding London](https://lu.ma/foclondon):
 
 <iframe width="560" height="315"
-style="max-width: 100%"
+style="max-width: 100%;"
 src="https://www.youtube-nocookie.com/embed/WZeCQwtMrCg?si=H_R36bwRzUNYmz4m" 
 title="YouTube video player"
 frameborder="0" 
