@@ -15,6 +15,6 @@ export default defineConfig({
     origin: 'http://localhost:5173',
   },
 
-  // served by Zola anyway
+  // /public is served by Zola anyway
   publicDir: false,
 });
