@@ -50,9 +50,9 @@
     {% endblock %}
 
     {% if is_prod %}
-      {% set manifest = load_data(path="dist/vite/.vite/manifest.json") %}
-      {% for css in manifest["src/main.js"]["css"] %}
-        <link rel="stylesheet" href="bundle/{{ css }}" />
+      {% set manifest = load_data(path="static/built/.vite/manifest.json") %}
+      {% for css in manifest["src/main.ts"]["css"] %}
+        <link rel="stylesheet" href="/built/{{ css }}" />
       {% endfor %}
     {% endif %}
   </head>
@@ -63,7 +63,7 @@
     {% if is_prod %}
       <script
         type="module"
-        src="bundle/{{ manifest["js/main.js"]["file"] }}"
+        src="built/{{ manifest["src/main.ts"]["file"] }}"
       ></script>
     {% else %}
       <!-- development mode -->

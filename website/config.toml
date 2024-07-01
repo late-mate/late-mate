@@ -2,7 +2,7 @@ base_url = "https://late-mate.com"
 
 output_dir = "dist/"
 
-ignored_static = [".vite"]
+ignored_static = ["built/.vite/*"]
 
 compile_sass = false
 
