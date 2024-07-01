@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "include": [
+    "/plau/js/script.outbound-links.tagged-events.js",
+    "/plau/api/event"
+  ],
+  "exclude": []
+}
