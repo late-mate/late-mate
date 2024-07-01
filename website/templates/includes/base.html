@@ -1,0 +1,99 @@
+{% set env_kind = get_env(name="ENV_KIND", default="dev") %}
+{% set is_prod = env_kind == "prod" %}
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="{{ get_url(path='favicon.ico') }}" sizes="32x32" />
+    <link
+      rel="icon"
+      href="{{ get_url(path='icon.svg') }}"
+      type="image/svg+xml"
+    />
+    <title>Late Mate</title>
+
+    <meta
+      name="description"
+      content="Making every computer snappier, one measurement at a time"
+    />
+    <meta name="twitter:image:src" content="https://late-mate.com/card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Late Mate — Measure latency from keypress to the screen"
+    />
+    <meta
+      name="twitter:description"
+      content="Making every computer snappier, one measurement at a time"
+    />
+
+    <meta property="og:image" content="https://late-mate.com/card.jpg" />
+    <meta
+      property="og:image:alt"
+      content="Making every computer snappier, one measurement at a time"
+    />
+    <meta property="og:site_name" content="Late Mate" />
+    <meta property="og:type" content="object" />
+    <meta property="og:title" content="Late Mate" />
+    <meta property="og:url" content="https://late-mate.com/" />
+    <meta
+      property="og:description"
+      content="Making every computer snappier, one measurement at a time"
+    />
+
+    <title>{% block title %}Late Mate{% endblock %}</title>
+
+    {% block extra_meta %}
+    {% endblock %}
+
+    {% if is_prod %}
+      {% set manifest = load_data(path="dist/vite/.vite/manifest.json") %}
+      {% for css in manifest["src/main.js"]["css"] %}
+        <link rel="stylesheet" href="bundle/{{ css }}" />
+      {% endfor %}
+    {% endif %}
+  </head>
+
+  <body>
+    {% block body %}{% endblock %}
+
+    {% if is_prod %}
+      <script
+        type="module"
+        src="bundle/{{ manifest["js/main.js"]["file"] }}"
+      ></script>
+    {% else %}
+      <!-- development mode -->
+      <script type="module" src="http://localhost:5173/@vite/client"></script>
+      <script type="module" src="http://localhost:5173/src/main.ts"></script>
+    {% endif %}
+
+    {# analytics #}
+    {% if is_prod %}
+      <!--suppress HtmlUnknownTarget -->
+      <script
+        defer
+        data-domain="late-mate.com"
+        data-api="/plau/api/event"
+        src="/plau/js/script.outbound-links.tagged-events.js"
+      ></script>
+      <script>
+        window.plausible =
+          window.plausible ||
+          function () {
+            (window.plausible.q = window.plausible.q || []).push(arguments);
+          };
+        window.onSubscribeSubmit = function () {
+          plausible('Subscribe');
+          return window.open(
+            'https://buttondown.email/late-mate',
+            'popupwindow',
+          );
+        };
+      </script>
+    {% endif %}
+  </body>
+</html>

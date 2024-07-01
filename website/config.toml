@@ -1,0 +1,12 @@
+base_url = "https://late-mate.com"
+
+output_dir = "dist/"
+
+ignored_static = [".vite"]
+
+compile_sass = false
+
+build_search_index = false
+
+[markdown]
+highlight_code = false

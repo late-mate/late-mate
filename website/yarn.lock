@@ -848,6 +848,7 @@ __metadata:
     autoprefixer: "npm:^10.4.19"
     postcss: "npm:^8.4.38"
     prettier: "npm:3.2.5"
+    prettier-plugin-jinja-template: "npm:^1.4.1"
     typescript: "npm:^5.2.2"
     vite: "npm:^5.2.0"
   languageName: unknown
@@ -1098,6 +1099,15 @@ __metadata:
     picocolors: "npm:^1.0.0"
     source-map-js: "npm:^1.2.0"
   checksum: 10/6e44a7ed835ffa9a2b096e8d3e5dfc6bcf331a25c48aeb862dd54e3aaecadf814fa22be224fd308f87d08adf2299164f88c5fd5ab1c4ef6cbd693ceb295377f4
+  languageName: node
+  linkType: hard
+
+"prettier-plugin-jinja-template@npm:^1.4.1":
+  version: 1.4.1
+  resolution: "prettier-plugin-jinja-template@npm:1.4.1"
+  peerDependencies:
+    prettier: ^3.0.0
+  checksum: 10/6569dcca7ced661c9a24b282ddcaa51336cd2a5096743f9b8edcf5ffb51a981a92430525c0bb914bdbab9cab9ced6fb15e800f55893b58abd0cf5ed6782c130b
   languageName: node
   linkType: hard
 

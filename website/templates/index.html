@@ -1,0 +1,346 @@
+{% extends "includes/base.html" %}
+
+{% block body %}
+  <main>
+    <section class="section-dark hero">
+      <div class="hero-left">
+        <h1 class="title">Late Mate</h1>
+        <div class="subtitle-container">
+          <p class="subtitle">
+            Snappy inputs <span class="green">slap</span><br />
+            Input delay <span class="red">sucks</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <p class="lead">See for yourself</p>
+        <div class="demo">
+          <div class="controls">
+            <p>Delay:</p>
+
+            <input
+              type="range"
+              id="latency-demo-delay"
+              min="0"
+              max="300"
+              step="60"
+              value="120"
+              aria-label="Input latency slider"
+            />
+
+            <div id="latency-demo-delay-value"></div>
+          </div>
+
+          <div class="typing">
+            <p class="sample">
+              How poor are they that have not patience!<br />
+              What wound did ever heal but by degrees?<br />
+              Thou know’st we work by wit and not by witchcraft,<br />
+              And wit depends on dilatory time.
+            </p>
+            <div class="input-wrap" id="latency-demo-textarea-wrap">
+              <textarea
+                placeholder="Type here"
+                id="latency-demo-textarea"
+                aria-label="Latency demo textarea"
+                class="input"
+                rows="1"
+                disabled
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-white cant-measure">
+      <h2 class="header">
+        You can't fix delays that you
+        <span class="highlight red">can't measure</span>.
+      </h2>
+    </section>
+
+    <section class="section-white">
+      <ul class="usecases">
+        <li>
+          <h3 class="customer">Developer?</h3>
+          <p class="text">
+            You can't eyeball latency. Input delay is too easy to get used to
+            it. Your project <em>will</em> get more and more sluggish. Hard to
+            believe? Just look at…
+            <span title="Microsoft Teams">most software</span>, really.
+          </p>
+        </li>
+        <li>
+          <h3 class="customer">Competitive gamer?</h3>
+          <p class="text">
+            Lower latency is an advantage. But how do you know if borderless
+            windowed or fullscreen is faster? How do you squeeze the most from
+            your setup?
+          </p>
+        </li>
+        <li>
+          <h3 class="customer">Business?</h3>
+          <p class="text">
+            Users can tell when your software is snappy. It feels great! But
+            your teams
+            <em>will</em> sacrifice responsiveness if it's not tracked.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section-white first-video">
+      <h2>
+        With Late&nbsp;Mate you&nbsp;<span class="highlight green">can</span>.
+      </h2>
+      <div class="video">
+        <video autoplay loop muted playsinline width="100%">
+          <source src="{{ get_url(path='top_video.mp4') }}" type="video/mp4" />
+        </video>
+      </div>
+    </section>
+
+    <section class="section-dark what-it-is">
+      <h2 class="header">What Late&nbsp;Mate <em>is</em>?</h2>
+      <div class="content">
+        <div class="column">
+          <h3 class="column-header">Software</h3>
+          <ul>
+            <li>
+              <div>CLI tool</div>
+              <div>Ready</div>
+            </li>
+
+            <li>
+              <div>Rust crate</div>
+              <div>In progress</div>
+            </li>
+
+            <li>
+              <div>Desktop app</div>
+              <div>In progress</div>
+            </li>
+          </ul>
+        </div>
+        <div class="column">
+          <h3 class="column-header">Device</h3>
+          <ul>
+            <li>
+              <div>Prototype</div>
+              <div>Ready</div>
+            </li>
+
+            <li>
+              <div>Pre-release</div>
+              <div>In progress</div>
+            </li>
+
+            <li>
+              <div>Release</div>
+              <div>Future</div>
+            </li>
+          </ul>
+        </div>
+        <div class="column cloud">
+          <h3 class="column-header">Cloud</h3>
+          <p>
+            Want to integrate latency testing into your release pipeline?
+            <a href="mailto:cloud@late-mate.com" class="link">Drop a message</a
+            >!
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-white first-cta">
+      <div class="column plan">
+        <h3>TL;DR:</h3>
+        <ul>
+          <li><em>Lag</em>: creeps in</li>
+          <li><em>Late Mate</em>: measures</li>
+          <li><em>You</em>: fix</li>
+        </ul>
+      </div>
+
+      <div class="column">
+        <p>
+          But first, Late Mate will be <strong>crowdfunded</strong>. Follow on
+          <a
+            href="https://twitter.com/late_mate_com"
+            title="yes Twitter"
+            target="_blank"
+            class="link"
+            >Twitter</a
+          >
+          and smash the button for <span class="updates">updates</span>
+        </p>
+      </div>
+
+      <form
+        action="https://buttondown.email/api/emails/embed-subscribe/late-mate"
+        method="post"
+        target="popupwindow"
+        onsubmit="onSubscribeSubmit()"
+        class="column subscribe-form"
+      >
+        <input
+          type="email"
+          name="email"
+          placeholder="Your email"
+          aria-label="Email"
+          class="email"
+          required
+        />
+        <button type="submit" class="plausible-event-name=Subscribe">
+          Subscribe
+        </button>
+      </form>
+    </section>
+
+    <section class="section-dark how-it-works">
+      <h2 class="header">How <span class="shadow">The Device</span> works</h2>
+      <div class="content">
+        <div class="image-container">
+          <div class="image">
+            <!-- Vite sadly doesn't process <object> tags yet, see https://github.com/vitejs/vite/issues/7062 -->
+            <!--suppress HtmlUnknownTarget -->
+            <object
+              id="explanation-svg"
+              data="{{ get_url(path='concept.svg') }}"
+              type="image/svg+xml"
+              width="100%"
+              height="100%"
+            ></object>
+          </div>
+        </div>
+        <ol class="list">
+          <li id="explanation-1">
+            <div class="explanation-content">
+              <h3>Simulate the input</h3>
+              <p>
+                Late Mate device takes a testing scenario and executes it,
+                pretending to be a keyboard and a mouse. It's polled at 1kHz,
+                the highest polling rate available for USB&lt;3.0 devices.
+              </p>
+            </div>
+          </li>
+          <li id="explanation-2">
+            <div class="explanation-content">
+              <h3><em>[Computer work goes here]</em></h3>
+              <p>
+                From USB controller to software to the kernel to the compositor,
+                your computer works hard to change pixels on the screen.
+              </p>
+            </div>
+          </li>
+          <li id="explanation-3">
+            <div class="explanation-content">
+              <h3>Detect the screen change</h3>
+              <p>
+                The device looks at a patch of your screen, waiting for a
+                brightness change. It only takes Late Mate 0.5ms to know that
+                the computer started reacting to the input.
+              </p>
+            </div>
+          </li>
+          <li id="explanation-4">
+            <div class="explanation-content">
+              <h3>Time the difference</h3>
+              <p>
+                Timing is done completely on-device, so the results are precise
+                no matter what your computer's clock does.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section-white why">
+      <h2>
+        Since you scrolled so far down, we're almost friends now.
+        <span class="reveal">Face reveal</span>
+      </h2>
+      <div class="embed">
+        <!--suppress HtmlDeprecatedAttribute -->
+        <iframe
+          width="100%"
+          height="100%"
+          src="https://www.youtube-nocookie.com/embed/36qOK8cBEDo?si=4l9GwAM5jFxUfdjX"
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </section>
+
+    <section class="section-white previous-and-cta">
+      <div class="previous">
+        <h2>Previously in Late Mate:</h2>
+        <ul>
+          <li>
+            <!--suppress HtmlUnknownTarget -->
+            <a href="old/updates/003/update-003.html" class="link"
+              >003 — Houston, we have results!</a
+            >
+          </li>
+          <li>
+            <!--suppress HtmlUnknownTarget -->
+            <a href="old/updates/002/update-002.html" class="link"
+              >002 — Prototype progress</a
+            >
+          </li>
+          <li>
+            <!--suppress HtmlUnknownTarget -->
+            <a href="old/updates/001/update-001.html" class="link"
+              >001 — Programming on the metal</a
+            >
+          </li>
+        </ul>
+      </div>
+      <div class="cta">
+        <p>
+          Follow on
+          <a
+            href="https://twitter.com/late_mate_com"
+            target="_blank"
+            class="link"
+            >Twitter</a
+          >
+          and subscribe<br />↓&nbsp;↓&nbsp;↓
+        </p>
+
+        <form
+          action="https://buttondown.email/api/emails/embed-subscribe/late-mate"
+          method="post"
+          target="popupwindow"
+          onsubmit="onSubscribeSubmit()"
+          class="subscribe-form"
+        >
+          <input
+            type="email"
+            name="email"
+            placeholder="Your email"
+            aria-label="Email"
+            class="email"
+            required
+          />
+          <button type="submit" class="plausible-event-name=Subscribe">
+            Subscribe
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <footer class="section-dark footer">
+      <p>
+        © 2024
+        <a href="https://ynoengineering.com/">YNO Engineering Ltd</a>
+      </p>
+    </footer>
+  </main>
+{% endblock %}
