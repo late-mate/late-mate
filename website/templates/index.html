@@ -97,7 +97,10 @@
       </h2>
       <div class="video">
         <video autoplay loop muted playsinline width="100%">
-          <source src="{{ get_url(path='top_video.mp4') }}" type="video/mp4" />
+          <source
+            src="{{ get_url(path='landing/top_video.mp4') }}"
+            type="video/mp4"
+          />
         </video>
       </div>
     </section>
@@ -208,7 +211,7 @@
             <!--suppress HtmlUnknownTarget -->
             <object
               id="explanation-svg"
-              data="{{ get_url(path='concept.svg') }}"
+              data="{{ get_url(path='landing/concept.svg') }}"
               type="image/svg+xml"
               width="100%"
               height="100%"
