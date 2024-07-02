@@ -74,7 +74,7 @@
     {% if is_prod %}
       <script
         type="module"
-        src="built/{{ manifest["src/main.ts"]["file"] }}"
+        src="/built/{{ manifest["src/main.ts"]["file"] }}"
       ></script>
     {% else %}
       <!-- development mode -->
