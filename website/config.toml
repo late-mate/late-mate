@@ -1,6 +1,6 @@
 # Zola config
 
-base_url = "https://late-mate.pages.dev/"
+base_url = "https://late-mate.com/"
 
 output_dir = "dist/"
 
