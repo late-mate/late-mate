@@ -1,3 +1,5 @@
+**⚠️ not meant for public consumption (yet?) ⚠️**
+
 # Installation
 
 * you will need the following installed globally:
