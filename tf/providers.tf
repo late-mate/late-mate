@@ -1,3 +1,11 @@
+terraform {
+  backend "s3" {
+    bucket = "late-mate-tfstate"
+    key    = "main.tfstate"
+    region = "eu-west-2"
+  }
+}
+
 provider "aws" {
 }
 
